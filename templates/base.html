@@ -1,0 +1,6 @@
+<!DOCTYPE html><html lang="en" dir="ltr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AstroVive – {% block t %}{% endblock %}</title><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"><script src="{{ url_for('static', filename='app.js') }}"></script></head><body class="{% block bc %}{% endblock %}">
+<div class="top"><b style="display:flex;align-items:center;gap:8px"><svg width="24" height="24" viewBox="0 0 32 32" fill="none" stroke="#3cc8ff" stroke-width="2.2" stroke-linecap="round"><ellipse cx="16" cy="16" rx="13" ry="5.5" transform="rotate(-32 16 16)"/><circle cx="16" cy="16" r="6.2" fill="#0a2a6e"/></svg>AstroVive</b><nav>
+{% for ep,label in NAV %}<a href="{{ url_for(ep) }}" class="{{ 'on' if request.endpoint==ep or (ep=='dashboard' and request.endpoint=='body') }}">{{label}}</a>{% endfor %}<a href="/" style="color:#ff6b6b">Log out</a></nav></div>
+<main>{% block c %}{% endblock %}</main>
+</body></html>

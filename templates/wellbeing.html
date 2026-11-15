@@ -1,0 +1,7 @@
+{% extends 'base.html' %}{% block t %}Wellbeing{% endblock %}{% block c %}
+<div class="two"><div class="phone" style="width:100%"><h3 style="margin-top:0">Daily Check-in – Sleep & Mental Health</h3>
+{% for k,(n,u) in WB.items() %}<label style="font-size:.85rem">{{n}} ({{u}})</label><input type="number" step="any" id="{{k}}">{% endfor %}
+<button class="btn" onclick="save()">Save Check-in</button></div>
+<div class="card"><b>Current Status</b>{% for i in items %}<div class="guide {{i.color}}"><span class="chip {{i.color}}">{{ 'Warning' if i.color=='YELLOW' else 'Good' if i.color=='GREEN' else 'Collecting data' }}</span> <b>{{i.name}}</b>: {{'%g'|format(i.last)}} <small style="color:var(--mut)">({{i.n}} readings)</small><p>{{i.msg}}</p>{% if i.action %}<h4>Action</h4><p>{{i.action}}</p><h4>Contact Ground when</h4><p>{{i.contact}}</p>{% endif %}</div>
+{% else %}<p style="color:var(--mut)">No check-ins yet. Enter your values or load the demo data from the dashboard.</p>{% endfor %}</div></div>
+<script>async function save(){const v={};document.querySelectorAll('input').forEach(i=>v[i.id]=i.value);await fetch('/api/wb',{method:'POST',body:JSON.stringify({values:v})});location.reload()}</script>{% endblock %}

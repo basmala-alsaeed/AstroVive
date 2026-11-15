@@ -1,0 +1,22 @@
+{% extends 'base.html' %}{% block t %}Health Details{% endblock %}{% block c %}
+<div class="two"><div class="phone" style="width:100%"><div style="display:flex;justify-content:space-between;margin-bottom:12px"><b>Data</b><a href="/reports">Share all</a></div><div id="list"></div></div>
+<div class="phone" style="width:100%"><div class="big" id="ttl"></div>
+<div class="seg" style="margin-top:12px"><b class="on">Day</b><b>Month</b><b>Year</b></div>
+<div class="chart"><div class="big" id="last" style="text-align:start"></div><svg id="ch" viewBox="0 0 300 150" preserveAspectRatio="none"></svg></div>
+<div class="pills"><span id="avg"></span><span id="mx"></span><span id="mn"></span></div>
+<input id="val" type="number" step="any" placeholder="Enter the new value"><label style="font-size:.88rem"><input type="checkbox" id="sym" style="width:auto;margin-inline-end:8px">Symptoms present</label>
+<div id="out"></div><button class="btn" onclick="save()">Save Measurement</button>{% if show('ground') %}<a class="btn red" style="margin-top:10px" href="/ground">Send to Earth →</a>{% endif %}</div></div>
+<script>
+const VS={{vs|tojson}},NAMES={{names|tojson}};let cur=VS[0],H={};const $=i=>document.getElementById(i),A=a=>a.length?a:[0];
+async function load(){for(const v of VS)H[v.metric_id]=await(await fetch('/api/history/'+v.metric_id)).json();draw()}
+function colorOf(v,x){return x==null?'NONE':(x<v.critical_low&&v.critical_low!=null)||(v.critical_high!=null&&x>v.critical_high)?'RED':x<v.normal_min||x>v.normal_max?'YELLOW':'GREEN'}
+function draw(){$('list').innerHTML=VS.map(v=>{const h=H[v.metric_id],l=h.at(-1);return'<div class="row '+colorOf(v,l)+(v==cur?' on':'')+'" onclick="pick(\''+v.metric_id+'\')"><div><small>'+NAMES[v.metric_id]+'</small><span>'+(l??'—')+'</span> <small style="display:inline">'+v.unit+'</small></div><svg viewBox="0 0 120 28" preserveAspectRatio="none">'+spark(h)+'</svg></div>'}).join('');
+const h=H[cur.metric_id];$('ttl').textContent=NAMES[cur.metric_id];$('last').innerHTML=(h.at(-1)??'—')+' <small>'+cur.unit+'</small>';
+$('ch').innerHTML=h.length>1?spark(h,300,150).replace('<path','<path fill="none" stroke="#ff6b6b" stroke-width="3"'):'<text x="150" y="80" fill="#9fc1dc" text-anchor="middle" font-size="12">No measurements yet</text>';
+$('avg').textContent='Avg '+(h.length?(h.reduce((a,b)=>a+b)/h.length).toFixed(1):'—');$('mx').textContent='Max '+(h.length?Math.max(...h):'—');$('mn').textContent='Min '+(h.length?Math.min(...h):'—')}
+function pick(id){cur=VS.find(v=>v.metric_id==id);$('val').value='';$('out').innerHTML='';draw()}
+async function chk(){if($('val').value==='')return $('out').innerHTML='';const r=await(await fetch('/api/check',{method:'POST',body:JSON.stringify({metric_id:cur.metric_id,value:$('val').value,symptom:$('sym').checked})})).json(),g=r.guidance;
+$('out').innerHTML=r.error?'<div class="guide NONE"><p>'+r.error+'</p></div>':'<div class="guide '+r.color+'"><span class="chip '+r.color+'">'+r.color+'</span>'+(g?'<h4>What it means</h4><p>'+g.what_it_means+'</p><h4>Action</h4><p>'+g.first_aid_action+'</p><h4>Contact Ground when</h4><p>'+g.contact_ground_when+'</p>':'')+'</div>'}
+$('val').oninput=chk;$('sym').onchange=chk;
+async function save(){if($('val').value==='')return;if($('out').innerHTML.includes('Implausible'))return alert('Implausible value');await fetch('/api/log',{method:'POST',body:JSON.stringify({readings:[{metric_id:cur.metric_id,value:$('val').value}],symptom:$('sym').checked})});H[cur.metric_id].push(+$('val').value);$('val').value='';$('out').innerHTML='';draw()}
+load();</script>{% endblock %}

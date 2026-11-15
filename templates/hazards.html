@@ -1,0 +1,40 @@
+{% extends 'base.html' %}{% block t %}Hazards{% endblock %}{% block c %}
+<div class="card"><div class="envhd"><h3 style="margin:0">🛰️ Spacecraft Environment Check</h3>
+<div class="envmeta"><span class="chip NONE" id="envsum">Loading…</span><small id="envnext" style="color:var(--mut)"></small><button class="btn ghost" id="envbtn" onclick="measure()">Measure now</button></div></div>
+<small style="color:var(--mut)">Cabin sensors are read automatically every 2 minutes (simulated). Each row shows the latest value, the change since the previous measurement and the recent trend.</small>
+<div id="envrows" style="margin-top:8px">{% for e in env %}<div class="env NONE" data-id="{{e.limit_id}}" data-name="{{e.parameter}}" data-unit="{{e.unit}}" data-lo="{{e.lower_limit if e.lower_limit is not none else ''}}" data-hi="{{e.upper_limit if e.upper_limit is not none else ''}}">
+<span>{{e.parameter}} <small style="color:var(--mut)">({{e.unit}})</small><br><small style="color:var(--mut)">{% if e.lower_limit is not none and e.upper_limit is not none %}limit {{e.lower_limit}} to {{e.upper_limit}}{% elif e.upper_limit is not none %}limit up to {{e.upper_limit}}{% else %}limit at least {{e.lower_limit}}{% endif %}</small></span>
+<b class="val">—</b><span class="dl"></span><svg viewBox="0 0 120 28"></svg><span class="chip NONE st">—</span></div>{% endfor %}</div></div>
+<div class="card" style="margin-top:16px"><b>Recent changes</b><div id="envlog" style="margin-top:8px"></div></div>
+<script>
+const $=i=>document.getElementById(i),rows=[...document.querySelectorAll('.env')],LAB={GREEN:'Within limit',YELLOW:'Near limit',RED:'Out of limit'};
+let H={},nextAt=0,busy=false;
+function status(r,v){const lo=r.dataset.lo,hi=r.dataset.hi,L=lo===''?null:+lo,U=hi===''?null:+hi;
+ if((L!==null&&v<L)||(U!==null&&v>U))return'RED';
+ const m=(L!==null&&U!==null)?(U-L)*.1:Math.abs(L!==null?L:U)*.1;     // within 10% of a limit = early warning
+ return((L!==null&&v<L+m)||(U!==null&&v>U-m))?'YELLOW':'GREEN'}
+const num=v=>String(+v.toFixed(2)),hm=t=>new Date(t*1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+function render(){let red=0,yel=0,n=0,last=0,ev=[];
+ rows.forEach(r=>{const h=H[r.dataset.id]||[];if(!h.length)return;n++;
+  const v=h[h.length-1][1],s=status(r,v),d=h.length>1?v-h[h.length-2][1]:0;last=Math.max(last,h[h.length-1][0]);
+  if(s==='RED')red++;else if(s==='YELLOW')yel++;
+  r.className='env '+s;r.querySelector('.val').textContent=num(v);
+  r.querySelector('.dl').textContent=Math.abs(d)<.005?'▬ no change':(d>0?'▲ +':'▼ ')+num(d);
+  r.querySelector('svg').innerHTML=spark(h.map(x=>x[1]),120,28);
+  const c=r.querySelector('.st');c.className='chip '+s+' st';c.textContent=LAB[s];
+  for(let i=1;i<h.length;i++){const a=status(r,h[i-1][1]),b=status(r,h[i][1]);if(a!==b)ev.push({t:h[i][0],r,a,b,v:h[i][1]})}});
+ const sm=$('envsum');sm.className='chip '+(red?'RED':yel?'YELLOW':n?'GREEN':'NONE');
+ sm.textContent=!n?'No data':red?red+' out of limit':yel?yel+' near limit':'All '+n+' within limits';
+ ev.sort((x,y)=>y.t-x.t);
+ $('envlog').innerHTML=ev.slice(0,12).map(e=>'<div class="evt"><span class="chip '+e.b+'">'+LAB[e.b]+'</span> '+hm(e.t)+' · '+e.r.dataset.name+': '+num(e.v)+' '+e.r.dataset.unit+' <small style="color:var(--mut)">(was '+LAB[e.a].toLowerCase()+')</small></div>').join('')||'<small style="color:var(--mut)">No status changes in the recorded period.</small>';
+ $('envlog').dataset.last=last}
+async function load(url,opt){if(busy)return;busy=true;
+ try{const r=await fetch(url,opt);if(r.status===401){location.href='/';return}if(!r.ok)throw 0;const j=await r.json();H=j.history;nextAt=Date.now()+j.next_in*1000;render()}
+ catch(e){$('envnext').textContent='Could not read the sensors – retrying…';nextAt=Date.now()+15000}
+ busy=false}
+function measure(){load('/api/env/measure',{method:'POST'})}
+setInterval(()=>{const s=Math.max(0,Math.round((nextAt-Date.now())/1000));
+ if(nextAt&&!busy&&s<=0)load('/api/env');
+ if(nextAt&&!busy)$('envnext').textContent='Next measurement in '+Math.floor(s/60)+':'+String(s%60).padStart(2,'0')},1000);
+load('/api/env');
+</script>{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'base.html' %}{% block t %}{{region.name}}{% endblock %}{% block c %}
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2 style="margin:0">{{region.name}}</h2><a href="/dashboard">← Back to Dashboard</a></div>
+<p style="color:var(--mut);font-size:.86rem;margin:6px 0 0">{{region.desc}}</p>
+<nav class="fl" aria-label="Body regions">{% for r in regions %}<a href="{{ url_for('body',rid=r.id) }}" class="{{ 'on' if r.id==region.id }}">{{r.name}}</a>{% endfor %}</nav>
+<div class="two">
+<div>
+  <div class="card"><b>Live Metrics</b>
+  {% for m in metrics %}<div class="row {{m.color}}" style="cursor:default;margin-top:10px"><div><small>{{m.name}}</small><span>{{ '%g'|format(m.val) if m.val is not none else '—' }}</span> <small style="display:inline">{{m.unit}}</small>{% if m.range %}<small>Normal range {{m.range}}</small>{% endif %}{% if m.msg %}<small>{{m.msg}}</small>{% endif %}</div>
+    <svg class="sp" data-v='{{ m.vals|tojson }}' viewBox="0 0 120 28" preserveAspectRatio="none"></svg>
+    <span class="chip {{m.color}}">{{ {'GREEN':'Normal','YELLOW':'Warning','RED':'Critical','NONE':'No data'}[m.color] }}</span></div>
+  {% if m.g %}<div class="guide {{m.color}}"><h4>What it means</h4><p>{{m.g.what_it_means}}</p>{% if m.g.first_aid_action %}<h4>Action</h4><p>{{m.g.first_aid_action}}</p><h4>Contact Ground when</h4><p>{{m.g.contact_ground_when}}</p>{% endif %}</div>{% endif %}
+  {% else %}<p style="color:var(--mut)">No live sensor is linked to this body part. Log pain here and review the related conditions below.</p>{% endfor %}</div>
+  {% if logs %}<div class="card" style="margin-top:16px"><b>Recent Logs</b>
+  {% for l in logs %}<div class="log {{l.color}}" style="margin-top:10px"><div class="h"><div><small style="color:var(--mut)">{{l.ts}}</small><br><b>{{l.name}}</b></div><div class="v" style="color:var(--c)">{{'%g'|format(l.value)}} <small style="font-size:.8rem">{{l.unit}}</small></div><span class="chip">{{l.color}}</span></div>
+  {% if l.symptom or l.note %}<small style="color:var(--mut)">{% if l.symptom %}With symptoms{% endif %}{% if l.symptom and l.note %} · {% endif %}{{l.note}}</small>{% endif %}</div>{% endfor %}</div>{% endif %}
+</div>
+<div>
+  {% if show('pain_log') %}<div class="card"><b>Log Pain – {{region.name}}</b>
+  <div style="margin:14px 0 4px">Pain level: <b id="pv" style="font-size:1.4rem">0</b> / 10</div>
+  <input type="range" id="pl" min="0" max="10" step="1" value="0" aria-label="Pain level">
+  <small style="color:var(--mut);display:block;margin-bottom:10px">0 = no pain · 10 = worst imaginable</small>
+  <input id="pn" maxlength="200" placeholder="Notes (optional): type, onset, trigger">
+  <button class="btn" onclick="savePain()">Save Pain Report</button></div>
+  <div class="card" style="margin-top:16px"><b>Pain History</b>
+  {% for p in pain %}<div class="log {{p.col}}" style="margin-top:10px"><div class="h"><div><small style="color:var(--mut)">{{p.ts}}</small><br><b>Pain {{p.level}} / 10</b></div><span class="chip">{{p.label}}</span></div>{% if p.note %}<small style="color:var(--mut)">{{p.note}}</small>{% endif %}</div>
+  {% else %}<p style="color:var(--mut)">No pain reports for this body part yet.</p>{% endfor %}</div>{% endif %}
+</div></div>
+{% if kb %}<div class="card" style="margin-top:16px"><b>Related Conditions – {{region.name}}</b><div style="margin-top:10px">
+{% for k in kb %}<details class="kb {{k.color_level|upper}}"><summary>{{k.condition_name}} <small style="color:var(--mut)">· {{k.hazard_category}}</small></summary>
+<p><b>Monitored:</b> {{k.metric_to_monitor}} ({{k.unit}}) – {{k.normal_range}}</p><p><b>Warning threshold:</b> {{k.warning_threshold}}</p><p><b>Symptoms:</b> {{k.symptoms}}</p><p><b>Action:</b> {{k.recommended_action}}</p><p><b>Contact Ground when:</b> {{k.contact_ground_when}}</p></details>{% endfor %}</div></div>{% endif %}
+<script>
+const R={{ region.id|tojson }},$=i=>document.getElementById(i);
+document.querySelectorAll('svg.sp').forEach(s=>s.innerHTML=spark(JSON.parse(s.dataset.v)));
+if($('pl'))$('pl').oninput=()=>$('pv').textContent=$('pl').value;
+async function savePain(){const r=await fetch('/api/pain',{method:'POST',body:JSON.stringify({region:R,level:+$('pl').value,note:$('pn').value})});if(r.ok)location.reload();else alert('Could not save the pain report')}
+</script>{% endblock %}

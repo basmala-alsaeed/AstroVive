@@ -1,0 +1,16 @@
+{% extends 'base.html' %}{% block t %}Reports{% endblock %}{% block bc %}ehr{% endblock %}{% block c %}
+<h2 style="margin-top:0">EHR Insight – Health Record</h2>
+<div class="k"><div class="card"><small>Measurements</small><b>{{logs|length}}</b></div><div class="card RED"><small>Critical</small><b style="color:var(--RED)">{{cnt.RED}}</b></div><div class="card YELLOW"><small>Warning</small><b style="color:var(--YELLOW)">{{cnt.YELLOW}}</b></div><div class="card GREEN"><small>Normal</small><b style="color:var(--GREEN)">{{cnt.GREEN}}</b></div></div>
+{% if show('diag_history') %}<div class="card" style="margin-bottom:16px"><b>🩺 Diagnostic History</b> <small style="color:var(--mut)">(symptom-based checks from Diagnose)</small>
+{% for d in diag %}<details class="kb {{d.severity}}" style="margin-top:10px"><summary>{{d.icon}} {{d.hazard}} <small style="color:var(--mut)">· {{d.ts}} · {{d.label}}</small></summary>
+<p><b>Symptoms:</b> {{d.symptoms|join(', ') or '—'}}</p>
+<p><b>Vitals:</b> {% for m,v in d.vitals.items() %}{{names[m]}} {{'%g'|format(v.value) if v.value is not none else 'felt'}} {{v.unit}}{% if not loop.last %}; {% endif %}{% else %}none{% endfor %}</p>
+<p><b>Body impact:</b> {{d.impact}}</p><p><b>Action plan:</b></p><ol style="margin:0;padding-inline-start:20px;font-size:.86rem;line-height:1.6">{% for a in d.plan %}<li>{{a}}</li>{% endfor %}</ol>
+<small style="color:var(--mut)">Source: {{d.source}}</small></details>
+{% else %}<p style="color:var(--mut)">No diagnostics yet. Try the <a href="/diagnose">Diagnose</a> page.</p>{% endfor %}</div>{% endif %}
+<div class="card"><b>Vital History</b><div class="fl"><b class="on" onclick="f('all',this)">All</b><b onclick="f('G',this)">Normal</b><b onclick="f('YELLOW',this)">Warning</b><b onclick="f('RED',this)">Critical</b></div>
+{% for l in logs %}{% set v=vs[l.metric_id] %}{% set p=((l.value-v.normal_min)/(v.normal_max-v.normal_min)*60+20)|round|int %}
+<div class="log {{l.color}}" data-c="{{ 'G' if l.color=='GREEN' else l.color }}"><div class="h"><div><small style="color:var(--mut)">{{l.ts}}</small><br><b>{{names[l.metric_id]}}</b></div><div class="v" style="color:var(--c)">{{'%g'|format(l.value)}} <small style="font-size:.8rem">{{v.unit}}</small></div><span class="chip">{{l.color}}</span></div>
+<div class="rg"><i style="inset-inline-start:{{[[p,2]|max,98]|min}}%"></i></div><small style="color:var(--mut)">Normal range {{v.normal_min}}–{{v.normal_max}}{% if l.symptom %} · With symptoms{% endif %}{% if l.note %} · {{l.note}}{% endif %}</small></div>
+{% else %}<p style="color:var(--mut);text-align:center">No records yet.</p>{% endfor %}</div>
+<script>function f(c,e){document.querySelectorAll('.fl b').forEach(b=>b.classList.toggle('on',b==e));document.querySelectorAll('.log').forEach(l=>l.style.display=c=='all'||l.dataset.c==c?'':'none')}</script>{% endblock %}

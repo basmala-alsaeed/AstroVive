@@ -1,0 +1,42 @@
+{% extends 'base.html' %}{% block t %}Profile{% endblock %}{% block c %}
+<div class="card" style="margin-bottom:20px"><div class="idcard"><div class="avatar" aria-hidden="true">{{ crew[:1]|upper }}</div>
+<div><h2 style="margin:0">{{ crew }}</h2><small style="color:var(--mut)">{{ me.role or 'Crew Member' }}{% if me.astronaut_id %} · ID {{ me.astronaut_id }}{% endif %}</small></div></div>
+{% if saved=='basic' %}<div class="guide GREEN"><p>Basic information saved.</p></div>{% endif %}
+<div class="kv"><div><small>Email</small><b>{{ me.email or '—' }}</b></div><div><small>Blood type</small><b>{{ bi.blood_type or '—' }}</b></div><div><small>Nationality</small><b>{{ bi.nationality or '—' }}</b></div><div><small>Date of birth</small><b>{{ bi.birth_date or '—' }}</b></div>
+<div><small>Mission</small><b>{{ bi.mission or '—' }}</b></div><div><small>Emergency contact</small><b>{{ bi.emergency_name or '—' }}{% if bi.emergency_phone %} · {{ bi.emergency_phone }}{% endif %}</b></div><div><small>Allergies</small><b>{{ bi.allergies or '—' }}</b></div><div><small>Medications</small><b>{{ bi.medications or '—' }}</b></div></div>
+{% if bi.notes %}<small style="color:var(--mut)">Medical notes: {{ bi.notes }}</small>{% endif %}
+<details style="margin-top:12px"><summary style="cursor:pointer;color:var(--cy)">Edit personal details & basic information</summary>
+<form method="post" style="margin-top:12px"><input type="hidden" name="section" value="basic">
+<div class="vgrid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+<div><small>Role / title</small><input name="role" maxlength="60" value="{{ me.role or '' }}"></div>
+<div><small>Email</small><input type="email" name="email" maxlength="80" value="{{ me.email or '' }}"></div>
+<div><small>Blood type</small><select name="blood_type"><option value="">Not specified</option>{% for b in blood %}<option {{ 'selected' if bi.blood_type==b }}>{{b}}</option>{% endfor %}</select></div>
+<div><small>Nationality</small><input name="nationality" maxlength="40" value="{{ bi.nationality or '' }}"></div>
+<div><small>Date of birth</small><input type="date" name="birth_date" value="{{ bi.birth_date or '' }}"></div>
+<div><small>Mission</small><input name="mission" maxlength="80" value="{{ bi.mission or '' }}"></div>
+<div><small>Emergency contact name</small><input name="emergency_name" maxlength="60" value="{{ bi.emergency_name or '' }}"></div>
+<div><small>Emergency contact phone</small><input name="emergency_phone" maxlength="24" value="{{ bi.emergency_phone or '' }}"></div>
+<div><small>Allergies</small><input name="allergies" maxlength="160" value="{{ bi.allergies or '' }}"></div>
+<div><small>Current medications</small><input name="medications" maxlength="160" value="{{ bi.medications or '' }}"></div></div>
+<small>Medical notes</small><textarea name="notes" maxlength="300" rows="2">{{ bi.notes or '' }}</textarea>
+<button class="btn" style="max-width:240px">Save basic information</button></form></details></div>
+<div class="two">
+<form class="card" method="post">
+  <input type="hidden" name="section" value="limits">
+  <b>Health Profile – personal limits</b>
+  {% if ok %}<div class="guide GREEN"><p>Saved. Your previous readings were re-evaluated with the new limits.</p></div>{% endif %}
+  {% if err %}<div class="guide RED"><p>{{err}}</p></div>{% endif %}
+  <small>Age</small><input type="number" name="age" min="18" max="90" required value="{{p.age if p}}">
+  <small>Sex</small><select name="sex"><option value="" {{'selected' if not p or not p.sex}}>Not specified</option><option value="M" {{'selected' if p and p.sex=='M'}}>Male</option><option value="F" {{'selected' if p and p.sex=='F'}}>Female</option></select>
+  <small>Weight (kg)</small><input type="number" step="0.1" name="weight" required value="{{p.weight if p}}">
+  <small>Height (cm)</small><input type="number" step="0.1" name="height" required value="{{p.height if p}}">
+  <small>Health conditions</small>
+  {% for k,t in [('athlete','Trained athlete (naturally low resting heart rate)'),('bb','Taking a beta-blocker (slows the heart rate)'),('htn','High blood pressure under treatment'),('dm','Diabetes')] %}
+  <label style="display:flex;align-items:center;gap:8px;margin:8px 0;font-size:.9rem"><input type="checkbox" name="{{k}}" style="width:auto;margin:0" {{'checked' if p and p[k]}}>{{t}}</label>{% endfor %}
+  <button class="btn" style="margin-top:12px">Save Profile</button>
+</form>
+<div class="card">
+  <b>Your Normal Limits</b>{% if bmi %}<span class="chip NONE" style="margin-inline-start:8px">BMI {{bmi}}</span>{% endif %}
+  {% for r in rows %}<div class="row {{'GREEN' if r.ch else 'NONE'}}" style="cursor:default"><div><small>{{r.name}}</small><span>{{r.new}}</span> <small style="display:inline">{{r.unit}}</small></div>
+  {% if r.ch %}<div style="text-align:end"><span class="chip GREEN">Adjusted for you</span><small>was {{r.old}}</small></div>{% else %}<small>General</small>{% endif %}</div>{% endfor %}
+</div></div>{% endblock %}

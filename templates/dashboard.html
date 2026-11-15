@@ -1,0 +1,30 @@
+{% extends 'base.html' %}{% block t %}Dashboard{% endblock %}{% block c %}
+{% macro tile(id,k) %}{% set m=cards[id] %}<div class="t t{{k}} {{m.color}}"><small>{{m.name}}</small><div class="v">{{ '%g'|format(m.val) if m.val is not none else '—' }} <i>{{m.unit}}</i></div><svg viewBox="0 0 120 28" preserveAspectRatio="none"><path d="M0 14h20l4-10 5 20 4-14 3 4h20l4-8 5 16 3-8h26"/></svg><small>Normal range {{m.range}}</small></div>{% endmacro %}
+{% set L={'GREEN':'Optimal','YELLOW':'Watch','RED':'Critical','NONE':'No readings'} %}
+{# Body regions: id, label, SVG path, marker x, marker y. Drawn in this order (later shapes sit on top). #}
+{% set Z=[
+('right_leg','Right Leg','M66 208H99L95 318H73Z',84,262),
+('left_leg','Left Leg','M101 208H134L127 318H105Z',116,262),
+('right_arm','Right Arm','M60 78L44 84L30 168L44 172L58 110Z',46,132),
+('left_arm','Left Arm','M140 78L156 84L170 168L156 172L142 110Z',154,132),
+('abdomen','Abdomen','M62 140H138V198Q138 206 130 206H70Q62 206 62 198Z',100,172),
+('chest','Chest & Lungs','M68 72H132Q138 72 138 80V140H62V80Q62 72 68 72Z',80,96),
+('head','Head','M76 38a24 24 0 1 0 48 0a24 24 0 1 0 -48 0',100,38),
+('heart','Heart','M94 112a14 14 0 1 0 28 0a14 14 0 1 0 -28 0',122,100)] %}
+<div class="grid">
+<div class="col">{{tile('V01',1)}}{{tile('V02',2)}}{{tile('V03',3)}}{{tile('V06',4)}}</div>
+<div class="col"><div class="card holo {{worst}}"><small style="color:var(--mut)">{{crew}}</small><a href="/profile" style="font-size:.74rem;color:var(--cy)">{{ me.role or 'Crew Member' }}{% if me.astronaut_id %} · {{ me.astronaut_id }}{% endif %}{% if bi.blood_type %} · Blood {{ bi.blood_type }}{% endif %}</a>
+<svg class="b" viewBox="0 0 200 330" role="group" aria-label="Interactive body map">
+{% for id,name,d,mx,my in Z %}{% set z=zones[id] %}<a href="{{ url_for('body',rid=id) }}" aria-label="{{name}}{% if z.pain %}, pain {{z.pain}} of 10{% endif %}"><title>{{name}}</title><path class="zone {{z.color}}" d="{{d}}"/></a>{% endfor %}
+<ellipse class="lung" cx="80" cy="102" rx="11" ry="24"/><ellipse class="lung" cx="126" cy="100" rx="9" ry="22"/>
+<circle class="heart" cx="108" cy="112" r="9" style="pointer-events:none"/>
+{% for id,name,d,mx,my in Z %}{% if zones[id].pain %}<g class="pm" transform="translate({{mx}} {{my}})"><circle class="ripple" r="8"/><circle r="8"/><text>{{zones[id].pain}}</text></g>{% endif %}{% endfor %}
+</svg>
+<small class="bodyhint">Tap a body part to view its data or log pain</small>
+{% if show('details') %}<a class="btn" href="/details" style="max-width:240px">Update Readings</a>{% endif %}</div>
+{% if show('health_analysis') %}<div class="card holo {{worst}}" style="padding:12px"><b>Health Analysis</b>
+<div class="ring" style="background:conic-gradient({{grp[0][1]}} 0 25%,{{grp[1][1]}} 0 50%,{{grp[2][1]}} 0 75%,{{grp[3][1]}} 0 100%)"><div><span>{{L[worst]}}</span><small style="color:var(--mut);font-weight:400">{{n}}/8</small></div></div>
+<div class="lg">{% for g in grp %}<span><i style="background:{{g[1]}}"></i>{{g[0]}}</span>{% endfor %}</div></div>{% endif %}</div>
+<div class="col">{{tile('V04',2)}}{{tile('V05',3)}}{{tile('V07',1)}}{{tile('V08',4)}}</div></div>{% if show('smart_alerts') %}<div class="card" style="margin-top:16px"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><b>🔔 Smart Alerts</b>{% if show('demo_data') %}<button class="btn ghost" style="width:auto;padding:6px 14px" onclick="confirm('Your current readings will be replaced with demo data. Continue?')&&fetch('/api/seed',{method:'POST'}).then(()=>location.reload())">Load Demo Data (10 days)</button>{% endif %}</div>
+{% for i in ins %}<div class="guide {{i.color}}"><p>{{i.text}}</p></div>{% else %}<p style="color:var(--mut)">No alerts.</p>{% endfor %}
+{% if show('ground') %}<a class="btn" href="/ground" style="max-width:260px;margin-top:8px">📡 Send Report to Ground</a>{% endif %}</div>{% endif %}{% endblock %}

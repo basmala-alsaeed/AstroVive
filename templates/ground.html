@@ -1,0 +1,31 @@
+{% extends 'base.html' %}{% block t %}Ground{% endblock %}{% block c %}
+<script src="{{ url_for('static', filename='diag.js') }}"></script>
+<div class="two"><div class="phone" style="width:100%"><h3 style="margin-top:0">📡 Ground Link (Store & Forward)</h3>
+<div class="link {{ 'RED' if st.link_down else 'GREEN' }}" id="lk" role="status"><span id="lkt">{{ '🔴 Link is DOWN – new reports are stored on board' if st.link_down else '🟢 Link is online' }}</span>
+{% if show('link_toggle') %}<button class="btn ghost" id="lkb" onclick="toggleLink()">{{ 'Restore Link' if st.link_down else 'Simulate Link Loss' }}</button>{% endif %}</div>
+<label for="dl" style="font-size:.85rem">Destination</label>
+<select id="dl"><option value="0.05">International Space Station (≈ instant)</option><option value="1.3">Moon (≈ 1.3 minutes)</option><option value="5" selected>HERA simulation (5 minutes)</option><option value="20">Mars (≈ 20 minutes)</option></select>
+<button class="btn" id="sb" onclick="send()">Prepare & Send Report</button>
+{% if show('speed_sim') %}<div style="margin-top:14px;font-size:.85rem"><b>Simulation speed</b> <small style="color:var(--mut)">(only changes how fast the simulated delay runs)</small>
+<div class="sp" id="sp" role="group" aria-label="Simulation speed">{% for x in speeds %}<button data-s="{{x}}" class="{{ 'on' if st.speed==x }}" onclick="setSpeed({{x}})">×{{x}}</button>{% endfor %}</div></div>{% endif %}</div>
+<div>{% for r in rows %}<div class="card out" style="margin-bottom:12px" data-s="{{r.sent}}" data-d="{{r.delay}}" data-x="{{r.down}}"><b class="stt"></b><div style="color:var(--mut);font-size:.8rem" class="eta"></div>
+<details><summary style="cursor:pointer;color:var(--cy);font-size:.85rem">View report</summary><pre>{{r.body}}</pre></details></div>
+{% else %}<div class="card" style="color:var(--mut)">No reports sent yet.</div>{% endfor %}</div></div>
+<script>
+const $=i=>document.getElementById(i);
+let S={{st|tojson}},t0=Date.now();                      // S = server simulation clock; local time interpolates between syncs
+const simNow=()=>S.sim_now+(Date.now()-t0)/1000*S.speed;
+function apply(s){S=s;t0=Date.now();
+  const lk=$('lk');lk.className='link '+(s.link_down?'RED':'GREEN');$('lkt').textContent=s.link_down?'🔴 Link is DOWN – new reports are stored on board':'🟢 Link is online';
+  if($('lkb'))$('lkb').textContent=s.link_down?'Restore Link':'Simulate Link Loss';
+  document.querySelectorAll('#sp button').forEach(b=>b.classList.toggle('on',+b.dataset.s===s.speed))}
+async function toggleLink(){const wasDown=S.link_down;apply(await api('/api/ground/link',{down:!S.link_down}));if(wasDown)location.reload()}
+async function setSpeed(x){apply(await api('/api/ground/speed',{speed:x}))}
+async function send(){const b=$('sb');b.disabled=true;try{await api('/api/send',{delay:+$('dl').value});location.reload()}catch(e){b.disabled=false}}
+const m=s=>s<60?Math.ceil(s)+' s':(s/60).toFixed(1)+' min';
+function tick(){const now=simNow();document.querySelectorAll('.out').forEach(c=>{const d=+c.dataset.d*60,e=now-c.dataset.s,st=c.querySelector('.stt'),eta=c.querySelector('.eta');
+ if(c.dataset.x=='1'){st.textContent='🟠 Stored – waiting for the link to return';eta.textContent='Will be sent automatically when the link is restored';return}
+ if(e<d){st.textContent='🟡 On its way to Earth…';eta.textContent='Arrives in '+m(d-e)}else if(e<2*d){st.textContent='🟢 Received on Earth';eta.textContent='Earliest expected reply in '+m(2*d-e)}else{st.textContent='✅ Expected reply time has passed';eta.textContent='Do not wait for a reply to act: follow the local procedure'}})}
+setInterval(tick,500);tick();
+setInterval(()=>fetch('/api/ground/state').then(r=>r.ok?r.json():Promise.reject()).then(apply).catch(()=>{}),15000);       // keep in sync with the server (other tabs, restarts)
+</script>{% endblock %}

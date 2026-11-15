@@ -1,0 +1,35 @@
+{% extends 'base.html' %}{% block t %}Diagnose{% endblock %}{% block c %}
+<script src="{{ url_for('static', filename='diag.js') }}"></script>
+<div class="two">
+<div class="card">
+  <h3 style="margin-top:0">🩺 Symptom-Based Hazard Check</h3>
+  <p style="color:var(--mut);font-size:.84rem;margin-top:0">Log how you feel. Your symptoms are compared with your vital signs and your personal limits, so a normal reading never triggers a false hazard alarm.</p>
+  <b style="font-size:.9rem">Symptoms right now</b>
+  <div class="chips" id="chips">{% for k,en,ar in symptoms %}<label><input type="checkbox" value="{{k}}"><span>{{en}} <small style="color:var(--mut)" lang="ar">· {{ar}}</small></span></label>{% endfor %}</div>
+  <b style="font-size:.9rem">Anything else? (optional)</b>
+  <input id="txt" maxlength="300" placeholder='Describe it, e.g. "I feel dizzy, heart rate 110, oxygen 94"' aria-label="Describe your symptoms">
+  <b style="font-size:.9rem">Vital signs</b>
+  <p style="color:var(--mut);font-size:.78rem;margin:2px 0 8px">Leave a field empty to use the latest Dashboard value{% if dts %} (last reading {{dts}}){% endif %}.</p>
+  <div class="vgrid">{% for m,lab in [('V01','Heart rate'),('V04','SpO2'),('V06','Respiration'),('V05','Temperature')] %}
+    <div><small>{{lab}} <span style="opacity:.8">({{lim[m]}})</span></small><input type="number" step="any" data-m="{{m}}" placeholder="{{ '%g'|format(dash[m]) if m in dash else '—' }}" aria-label="{{lab}}"></div>{% endfor %}</div>
+  <label style="display:flex;gap:8px;align-items:center;font-size:.84rem;margin:6px 0 14px"><input type="checkbox" id="env" style="width:auto;margin:0">A radiation / solar-event alert is active on board</label>
+  <button class="btn" id="go" onclick="run()">Run diagnostic</button>
+  <div id="out" aria-live="polite"></div>
+</div>
+<div class="card"><b>Recent diagnostics</b><div id="hist" style="margin-top:10px">
+{% for h in history %}<div class="log {{h.severity}}" style="margin-bottom:8px"><div class="h"><div><small style="color:var(--mut)">{{h.ts}}</small><br><b>{{h.hazard}}</b></div><span class="chip">{{h.icon}} {{h.label}}</span></div><small style="color:var(--mut)">{{h.symptoms|join(', ') or 'No symptoms'}}</small></div>
+{% else %}<p style="color:var(--mut)">No diagnostics yet.</p>{% endfor %}</div><a href="/reports" style="font-size:.85rem">Full history in Reports →</a></div>
+</div>
+<script>
+const NAMES={{names|tojson}};
+async function run(){
+  const symptoms=[...document.querySelectorAll('#chips input:checked')].map(i=>i.value), readings={};
+  document.querySelectorAll('.vgrid input').forEach(i=>{if(i.value!=='')readings[i.dataset.m]=i.value});
+  const b=document.getElementById('go');b.disabled=true;
+  try{const r=await api('/api/diagnose',{symptoms,text:document.getElementById('txt').value,readings,env_alert:document.getElementById('env').checked});
+    document.getElementById('out').innerHTML=renderCard(r);document.getElementById('out').scrollIntoView({behavior:'smooth',block:'nearest'});
+    const h=document.getElementById('hist');if(h.querySelector('p'))h.innerHTML='';
+    h.insertAdjacentHTML('afterbegin','<div class="log '+esc(r.severity)+'" style="margin-bottom:8px"><div class="h"><div><small style="color:var(--mut)">'+esc(r.ts)+'</small><br><b>'+esc(r.hazard)+'</b></div><span class="chip">'+esc(r.icon)+' '+esc(r.severity_label)+'</span></div><small style="color:var(--mut)">'+esc(r.symptom_names.join(', '))+'</small></div>');
+  }catch(e){}finally{b.disabled=false}
+}
+</script>{% endblock %}

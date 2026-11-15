@@ -1,0 +1,3294 @@
+{
+  "meta": {
+    "project": "ASTRA – Astronaut Self-Assessment Health Monitoring",
+    "challenge": "NASA Space Apps: create a health monitoring tool for astronauts",
+    "source_workbook": "ASTRA_Health_Knowledge_Base_Evidence_Reviewed.xlsx",
+    "generated_on": "2026-11-14",
+    "counts": {
+      "vital_signs": 8,
+      "vital_sign_states": 46,
+      "knowledge_base_conditions": 53,
+      "baseline_rules": 9,
+      "environment_limits": 19,
+      "sources": 36
+    },
+    "required_app_disclaimer": "Educational prototype only. Thresholds are Earth-based adult reference values or study criteria, not NASA flight medical limits. First-aid text is draft guidance, not crew medical orders. The flight surgeon / mission medical team makes the final decision.",
+    "data_status": "DEMO / RESEARCH CANDIDATE – not clinically validated, not approved for real-world medical use",
+    "evidence_levels": {
+      "A": "Checked against the cited NASA/peer-reviewed source during this build.",
+      "B": "Team-compiled. A source page or standard is identified, but the exact numbers were not re-verified. Confirm before the final submission.",
+      "C": "Team-proposed or Earth-based reference values. Not NASA flight limits. Needs clinical review."
+    },
+    "status_types": {
+      "Numeric": "can be color-coded from a number",
+      "Pass-Fail": "checked as yes/no",
+      "Scenario": "shown as an information card (no color limits)"
+    },
+    "important_notes": [
+      "1. The columns Recommended_Action and Contact_Ground_When are drafted crew-facing guidance based on the cited sources and general first-aid principles. They need review by a medical professional before any real-world use.",
+      "2. Vital-sign limits are Earth-based adult reference values (S18), not NASA flight limits. The tool must show a disclaimer: educational only; the flight surgeon makes the final decision.",
+      "3. Rows from the team's earlier sheets (S17) have no recorded original source. Trace each number to its page before submission.",
+      "4. Source S05 (CSA 'Why conduct experiments in space') was provided in the resources but has not yet been reviewed.",
+      "5. Blood glucose is named in the challenge brief but NASA sources provided here list no glucometer; confirm which devices the app may assume."
+    ],
+    "audit_notes": [
+      "CLINICAL SOURCE AUDIT (14 NOV 2026): See Clinical_Evidence_Audit, EtCO2_Review, First_Aid_Audit. These tabs add exact terrestrial clinical references and distinguish research study endpoints from actual alert limits.",
+      "IMPORTANT CORRECTION: In the active Status_Checker, RED for fasting glucose >=126 mg/dL is a prototype display, NOT a medical emergency criterion. Likewise EtCO2 >50 mmHg is from a small ED procedural-sedation study, NOT a NASA flight RED limit.",
+      "AHA/ACC 2025, ADA 2026, BTS, FDA, NEWS2 and AHA/Red Cross 2024 are EARTH-BASED clinical guidance; the actual spacecraft alert and treatment policy requires mission medical approval.",
+      "Existing status formulas were preserved so the demo remains functional. Do NOT treat its colors as validated medical classification or its first-aid text as crew medical orders."
+    ],
+    "general_first_aid_audit": {
+      "main_concern_in_original_actions": "Generic draft first aid may not be appropriate in microgravity or delayed-communication setting",
+      "evidence_backed_principle": "NASA-STD-3001 V1: medical management by Flight Medicine team within mission constraints",
+      "recommended_action_text": "Display onboard APPROVED checklists and a clear route to crew medical officer",
+      "do_not_automate": "Present unreviewed draft sentences as flight medical orders",
+      "source_ids": [
+        "S33",
+        "S34"
+      ],
+      "source_link": "https://www.nasa.gov/reference/3-0-health-and-medical-care/",
+      "audit_result": "Mission validation required"
+    }
+  },
+  "colors": {
+    "legend": [
+      {
+        "color": "GREEN",
+        "meaning": "Within the reference range",
+        "action_focus": "Prevention and routine monitoring",
+        "response_time": "Routine"
+      },
+      {
+        "color": "YELLOW",
+        "meaning": "Outside the normal range but not critical",
+        "action_focus": "Self-care first aid, recheck, log and report",
+        "response_time": "Recheck in minutes; report the same day if it persists"
+      },
+      {
+        "color": "RED",
+        "meaning": "Critical value, or a symptom override is present",
+        "action_focus": "Emergency action now and contact the flight surgeon",
+        "response_time": "Immediately"
+      }
+    ],
+    "knowledge_base_severity_to_color": [
+      {
+        "severity": "Preventive",
+        "color": "GREEN",
+        "action_focus": "Prevention: do the routine measures that stop the problem",
+        "response_time": "Ongoing",
+        "note": "Nothing is wrong now; the guidance is about keeping it that way"
+      },
+      {
+        "severity": "Routine",
+        "color": "YELLOW",
+        "action_focus": "Self-care and monitoring: log it and report if it persists",
+        "response_time": "Within days",
+        "note": "Not an emergency; act early so it stays small"
+      },
+      {
+        "severity": "Urgent",
+        "color": "YELLOW",
+        "action_focus": "Self-care first aid now, and report to ground the same day",
+        "response_time": "Same day",
+        "note": "Highest YELLOW: do not wait for it to worsen"
+      },
+      {
+        "severity": "Emergency",
+        "color": "RED",
+        "action_focus": "Emergency action now and contact the flight surgeon",
+        "response_time": "Immediately",
+        "note": "Follow the emergency procedure; do not delay the call"
+      }
+    ],
+    "ui_hex": {
+      "GREEN": "#C6E0B4",
+      "YELLOW": "#FFE699",
+      "RED": "#F4B084"
+    }
+  },
+  "status_logic": {
+    "description": "Same logic as the Status_Checker sheet. Inputs: metric_id, numeric value, symptom_override (bool). Output: color, state key, guidance.",
+    "steps": [
+      "1. If value is not a number -> no result. If metric_id unknown -> no result.",
+      "2. side = LOW if value < normal_min; HIGH if value > normal_max; else NORMAL.",
+      "3. color = RED if symptom_override is true, or (critical_low != null and value < critical_low), or (critical_high != null and value > critical_high).",
+      "4. Else color = GREEN if normal_min <= value <= normal_max, otherwise YELLOW.",
+      "5. state = GREEN if color is GREEN; RED_SYMPTOM if color is RED and side is NORMAL; else color + \"_\" + side (e.g. YELLOW_HIGH, RED_LOW).",
+      "6. guidance = vital_signs[metric_id].states[state]. If missing (e.g. SpO2 above 100) show \"check the value entered\"."
+    ],
+    "states": [
+      "GREEN",
+      "YELLOW_LOW",
+      "YELLOW_HIGH",
+      "RED_LOW",
+      "RED_HIGH",
+      "RED_SYMPTOM"
+    ],
+    "null_critical_limit_means": "no numeric RED on that side (EtCO2 critical_low is null on purpose: no validated limit). RED on that side can only come from symptom_override.",
+    "ui_rule": "Show vital_signs[].clinical_evidence_audit.flight_use_decision and the required_app_disclaimer next to any colored result. Do not present colors as validated medical classification."
+  },
+  "vital_signs": [
+    {
+      "metric_id": "V01",
+      "metric": "Heart rate (resting)",
+      "unit": "bpm",
+      "why_measured_in_space": "Microgravity changes circulation and the heart; arrhythmia and infection both show up in heart rate",
+      "how_measured_in_space": "Tempus Pro (S11)",
+      "normal_min": 60,
+      "normal_max": 100,
+      "critical_low": 50,
+      "critical_high": 119,
+      "evidence_note": "Original RED low <50 has AHA bradycardia-context support, but RED high >=120 is NOT a universal AHA emergency threshold. Symptoms, ECG, baseline and perfusion matter. DEMO ONLY.",
+      "source_ids": [
+        "S11",
+        "S18",
+        "S23",
+        "S24"
+      ],
+      "evidence_level": "C",
+      "demo_only": true,
+      "clinical_evidence_audit": {
+        "original_normal": "60-100 bpm",
+        "original_red_low": "<50 bpm",
+        "original_red_high": ">=120 bpm",
+        "grounded_adult_evidence": "AHA symptomatic bradyarrhythmia often <50; tachyarrhythmia typically >=150 when appropriate",
+        "not_established": "No validated universal >=120 RED or <50 RED for all astronauts",
+        "recommendation_for_demo": "Resting baseline + repeat measurement, symptoms, ECG/arrhythmia if available. Original cutoffs demo-only.",
+        "flight_use_decision": "MISSION/CLINICAL APPROVAL REQUIRED",
+        "evidence_source_ids": [
+          "S23",
+          "S24",
+          "S34"
+        ],
+        "main_url": "https://www.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-Bradycardia-250514.pdf",
+        "priority": "HIGH"
+      },
+      "first_aid_audit": {
+        "main_concern_in_original_actions": "Fixed >=120 RED, generic slow breathing/fluids as if treatment",
+        "evidence_backed_principle": "AHA decision algorithms prioritize ECG, symptoms, hemodynamic instability and likely cause",
+        "recommended_action_text": "Confirm sensor, pause activity, assess dizziness/chest pain/mental status, request medical review when concerning",
+        "do_not_automate": "Drug treatment, declaring rhythm from pulse alone",
+        "source_ids": [
+          "S23",
+          "S24",
+          "S32"
+        ],
+        "source_link": "https://www.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-Bradycardia-250514.pdf",
+        "audit_result": "Needs clinical review"
+      },
+      "states": {
+        "GREEN": {
+          "key": "V01|GREEN",
+          "color": "GREEN",
+          "what_it_means": "Resting heart rate is in the normal range.",
+          "first_aid_action": "No action needed. Keep routine monitoring.",
+          "prevention": "Keep the daily aerobic + resistance exercise routine, drink enough fluids, keep a regular sleep schedule and limit excess caffeine.",
+          "contact_ground_when": "Not needed. Report only if symptoms appear (dizziness, palpitations, chest discomfort).",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_LOW": {
+          "key": "V01|YELLOW_LOW",
+          "color": "YELLOW",
+          "what_it_means": "Heart rate is a little below the normal range (mild). Can be normal in very fit people.",
+          "first_aid_action": "Sit or stay secured and rest. Check the sensor, then recheck after 5 minutes. Note any dizziness, tiredness or near-fainting. Avoid hard exercise until it is back in range.",
+          "prevention": "Compare against your own baseline trend. Review hydration, sleep and recent training load. Log the value.",
+          "contact_ground_when": "If it stays low on repeat checks, keeps trending down, or you feel dizzy or light-headed.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_HIGH": {
+          "key": "V01|YELLOW_HIGH",
+          "color": "YELLOW",
+          "what_it_means": "Resting heart rate is above the normal range but not critical.",
+          "first_aid_action": "Rest for 5–10 minutes with slow breathing and drink water. Take your temperature (fever raises heart rate). Skip caffeine. Recheck and log the value.",
+          "prevention": "Stay hydrated, manage stress, protect sleep, limit caffeine and keep the exercise routine. Watch the trend over days.",
+          "contact_ground_when": "If it is still high after 15 minutes of rest, keeps rising, comes with fever (possible infection, see DFE-05), or with palpitations.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_LOW": {
+          "key": "V01|RED_LOW",
+          "color": "RED",
+          "what_it_means": "Heart rate is critically low.",
+          "first_aid_action": "Stop all activity and stay secured and still. Recheck the sensor and measure again. Record an ECG with Tempus Pro if available. Follow the cardiovascular-emergency procedure. Ask a crewmate to stay with you.",
+          "prevention": "After recovery: log the event and review training load, medications and hydration with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_HIGH": {
+          "key": "V01|RED_HIGH",
+          "color": "RED",
+          "what_it_means": "Heart rate is critically high.",
+          "first_aid_action": "Stop all activity and rest in a secured position with slow breathing. Record an ECG with Tempus Pro and send it. Follow the cardiovascular-emergency procedure. Ask a crewmate to stay with you.",
+          "prevention": "After recovery: log the event; review caffeine, stress, fever, dehydration and medications with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_SYMPTOM": {
+          "key": "V01|RED_SYMPTOM",
+          "color": "RED",
+          "what_it_means": "Heart rate looks normal, but chest pain, fainting or breathlessness is present. Treat as RED.",
+          "first_aid_action": "Stop all activity. Ask a crewmate to stay with you. Record an ECG with Tempus Pro, and follow the cardiovascular-emergency procedure.",
+          "prevention": "After recovery: log the event and review with the flight surgeon before returning to heavy exercise.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        }
+      }
+    },
+    {
+      "metric_id": "V02",
+      "metric": "Systolic blood pressure",
+      "unit": "mmHg",
+      "why_measured_in_space": "Fluid shifts and cardiovascular adaptation; fainting risk at landing",
+      "how_measured_in_space": "Tempus Pro (S11)",
+      "normal_min": 90,
+      "normal_max": 119,
+      "critical_low": 80,
+      "critical_high": 179,
+      "evidence_note": "Normal <120 systolic is AHA adult office category, NOT a personalized astronaut target. RED >=180 without organ damage is not automatically a hypertensive emergency. RED low <80 requires individual clinical review.",
+      "source_ids": [
+        "S11",
+        "S18",
+        "S25",
+        "S28"
+      ],
+      "evidence_level": "C",
+      "demo_only": true,
+      "clinical_evidence_audit": {
+        "original_normal": "90-119 mmHg",
+        "original_red_low": "<80 mmHg",
+        "original_red_high": ">=180 mmHg",
+        "grounded_adult_evidence": "2025 AHA office normal <120; severe >180 plus acute organ injury for hypertensive emergency",
+        "not_established": "No universal astronaut <80 alarm; isolated 180 not always a medical emergency",
+        "recommendation_for_demo": "Pair SBP+DBP, repeat correctly, compare symptoms and individual baseline. Mark critical state provisional.",
+        "flight_use_decision": "MISSION/CLINICAL APPROVAL REQUIRED",
+        "evidence_source_ids": [
+          "S25",
+          "S28"
+        ],
+        "main_url": "https://professional.heart.org/en/science-news/2025-high-blood-pressure-guideline/top-things-to-know",
+        "priority": "HIGH"
+      },
+      "first_aid_audit": {
+        "main_concern_in_original_actions": "Absolute RED thresholds without end-organ assessment",
+        "evidence_backed_principle": "2025 AHA classes and emergency criteria differ; measure BP correctly and repeat",
+        "recommended_action_text": "Record paired SBP/DBP and symptoms; escalate serious clinical signs via approved mission protocol",
+        "do_not_automate": "Emergency label based only on >=180 systolic without symptoms/organ findings",
+        "source_ids": [
+          "S25",
+          "S32"
+        ],
+        "source_link": "https://professional.heart.org/en/science-news/2025-high-blood-pressure-guideline/top-things-to-know",
+        "audit_result": "Needs revision"
+      },
+      "states": {
+        "GREEN": {
+          "key": "V02|GREEN",
+          "color": "GREEN",
+          "what_it_means": "Systolic blood pressure is in the normal range.",
+          "first_aid_action": "No action needed. Keep routine monitoring.",
+          "prevention": "Keep exercising daily, follow the nutrition and fluid guidance, and use lower-body compression garments and fluid loading before landing as instructed.",
+          "contact_ground_when": "Not needed. Report only if dizziness or fainting appears.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_LOW": {
+          "key": "V02|YELLOW_LOW",
+          "color": "YELLOW",
+          "what_it_means": "Systolic pressure is lower than normal (mild).",
+          "first_aid_action": "Stay secured and rest. Drink fluids. Move slowly and avoid sudden position changes. Recheck after 5 minutes with the cuff correctly placed. Avoid safety-critical tasks if you feel light-headed.",
+          "prevention": "Drink enough fluids, use compression garments as instructed, keep exercising, eat a healthy diet. Follow the pre-landing fluid plan.",
+          "contact_ground_when": "If you feel dizzy or faint, or it is still low on recheck.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_HIGH": {
+          "key": "V02|YELLOW_HIGH",
+          "color": "YELLOW",
+          "what_it_means": "Systolic pressure is above normal but not critical.",
+          "first_aid_action": "Rest quietly for 5 minutes, then recheck with the cuff correctly placed. Avoid caffeine and stress. Log the reading with the time and what you were doing.",
+          "prevention": "Regular exercise, good sleep, stress management and the flight-surgeon nutrition guidance (including salt).",
+          "contact_ground_when": "If readings stay in this range over several days, or any severe headache, chest pain or vision change appears.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_LOW": {
+          "key": "V02|RED_LOW",
+          "color": "RED",
+          "what_it_means": "Systolic pressure is critically low. Fainting risk.",
+          "first_aid_action": "Stop all activity and stay secured at rest. Drink fluids only if fully alert. Recheck the reading. Ask a crewmate to stay with you and watch for fainting. Follow the cardiovascular procedure.",
+          "prevention": "After recovery: review hydration, medications and compression garment use with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_HIGH": {
+          "key": "V02|RED_HIGH",
+          "color": "RED",
+          "what_it_means": "Systolic pressure is critically high.",
+          "first_aid_action": "Stop all activity and rest. Recheck after a few minutes with correct cuff placement. Check for severe headache, chest pain, vision change or weakness. Ask a crewmate to stay with you. Follow the emergency procedure.",
+          "prevention": "After recovery: review salt, stress, caffeine and medications with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_SYMPTOM": {
+          "key": "V02|RED_SYMPTOM",
+          "color": "RED",
+          "what_it_means": "Low blood pressure with dizziness or fainting. Treat as RED even if the number is acceptable.",
+          "first_aid_action": "Stop all activity and stay secured at rest. Ask a crewmate to stay with you. Recheck the reading and follow the cardiovascular procedure.",
+          "prevention": "After recovery: review hydration and compression garment use with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        }
+      }
+    },
+    {
+      "metric_id": "V03",
+      "metric": "Diastolic blood pressure",
+      "unit": "mmHg",
+      "why_measured_in_space": "Same as systolic; read together",
+      "how_measured_in_space": "Tempus Pro (S11)",
+      "normal_min": 60,
+      "normal_max": 79,
+      "critical_low": 50,
+      "critical_high": 119,
+      "evidence_note": "Diastolic categories must be read together with systolic. >=120 can be severe, but an emergency requires clinical context/organ injury; <50 not validated as astronaut RED.",
+      "source_ids": [
+        "S11",
+        "S18",
+        "S25"
+      ],
+      "evidence_level": "C",
+      "demo_only": true,
+      "clinical_evidence_audit": {
+        "original_normal": "60-79 mmHg",
+        "original_red_low": "<50 mmHg",
+        "original_red_high": ">=120 mmHg",
+        "grounded_adult_evidence": "2025 AHA adult normal <80; evaluate together with systolic and organ-injury signs",
+        "not_established": "No stand-alone astronaut <50 or >=120 emergency cutoff",
+        "recommendation_for_demo": "Use BP as paired measurement; suppress diagnoses from one component alone.",
+        "flight_use_decision": "MISSION/CLINICAL APPROVAL REQUIRED",
+        "evidence_source_ids": [
+          "S25",
+          "S28"
+        ],
+        "main_url": "https://professional.heart.org/en/science-news/2025-high-blood-pressure-guideline/top-things-to-know",
+        "priority": "HIGH"
+      },
+      "first_aid_audit": {
+        "main_concern_in_original_actions": "Absolute RED thresholds without end-organ assessment",
+        "evidence_backed_principle": "2025 AHA classes and emergency criteria differ; measure BP correctly and repeat",
+        "recommended_action_text": "Record paired SBP/DBP and symptoms; escalate serious clinical signs via approved mission protocol",
+        "do_not_automate": "Emergency label based only on >=180 systolic without symptoms/organ findings",
+        "source_ids": [
+          "S25",
+          "S32"
+        ],
+        "source_link": "https://professional.heart.org/en/science-news/2025-high-blood-pressure-guideline/top-things-to-know",
+        "audit_result": "Needs revision"
+      },
+      "states": {
+        "GREEN": {
+          "key": "V03|GREEN",
+          "color": "GREEN",
+          "what_it_means": "Diastolic blood pressure is in the normal range. Read it together with systolic; the worse of the two decides.",
+          "first_aid_action": "No action needed. Keep routine monitoring.",
+          "prevention": "Keep exercising daily, follow the nutrition and fluid guidance, manage stress and sleep.",
+          "contact_ground_when": "Not needed. Report only if symptoms appear.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_LOW": {
+          "key": "V03|YELLOW_LOW",
+          "color": "YELLOW",
+          "what_it_means": "Diastolic pressure is lower than normal (mild).",
+          "first_aid_action": "Stay secured and rest. Drink fluids. Move slowly. Recheck after 5 minutes and also check the systolic value.",
+          "prevention": "Drink enough fluids, keep exercising, use compression garments as instructed.",
+          "contact_ground_when": "If you feel dizzy or faint, or it is still low on recheck.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_HIGH": {
+          "key": "V03|YELLOW_HIGH",
+          "color": "YELLOW",
+          "what_it_means": "Diastolic pressure is above normal but not critical.",
+          "first_aid_action": "Rest quietly for 5 minutes and recheck with the cuff correctly placed. Avoid caffeine. Log the reading and check systolic too.",
+          "prevention": "Regular exercise, good sleep, stress management and the flight-surgeon nutrition guidance (including salt).",
+          "contact_ground_when": "If readings stay in this range over several days, or any severe headache, chest pain or vision change appears.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_LOW": {
+          "key": "V03|RED_LOW",
+          "color": "RED",
+          "what_it_means": "Diastolic pressure is critically low.",
+          "first_aid_action": "Stop all activity and stay secured at rest. Recheck both values. Ask a crewmate to stay with you and watch for fainting. Follow the cardiovascular procedure.",
+          "prevention": "After recovery: review hydration and medications with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_HIGH": {
+          "key": "V03|RED_HIGH",
+          "color": "RED",
+          "what_it_means": "Diastolic pressure is critically high.",
+          "first_aid_action": "Stop all activity and rest. Recheck after a few minutes. Check for severe headache, chest pain, vision change or weakness. Ask a crewmate to stay with you. Follow the emergency procedure.",
+          "prevention": "After recovery: review salt, stress, caffeine and medications with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_SYMPTOM": {
+          "key": "V03|RED_SYMPTOM",
+          "color": "RED",
+          "what_it_means": "High blood pressure with severe headache, chest pain or vision change. Treat as RED.",
+          "first_aid_action": "Stop all activity and rest. Ask a crewmate to stay with you. Recheck both BP values and follow the emergency procedure.",
+          "prevention": "After recovery: log the event and review with the flight surgeon before returning to heavy exercise.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        }
+      }
+    },
+    {
+      "metric_id": "V04",
+      "metric": "Oxygen saturation (SpO2)",
+      "unit": "%",
+      "why_measured_in_space": "Detects hypoxia from atmosphere or EVA conditions",
+      "how_measured_in_space": "Tempus Pro (S11)",
+      "normal_min": 95,
+      "normal_max": 100,
+      "critical_low": 91,
+      "critical_high": null,
+      "evidence_note": "Adult care oxygen targets are situation-specific (e.g., BTS 94-98%, sometimes 88-92%). FDA cautions oximeter can be inaccurate; check waveform/symptoms/trend. RED <=90 is proposed DEMO flag only.",
+      "source_ids": [
+        "S11",
+        "S18",
+        "S26",
+        "S27",
+        "S28"
+      ],
+      "evidence_level": "C",
+      "demo_only": true,
+      "clinical_evidence_audit": {
+        "original_normal": "95-100 %",
+        "original_red_low": "<=90 %",
+        "original_red_high": "N/A",
+        "grounded_adult_evidence": "BTS targets 94-98% for most acutely ill adults; 88-92% for selected hypercapnia-risk cases",
+        "not_established": "No universal NASA SpO2 cutoff and pulse oximeters have measurement uncertainty",
+        "recommendation_for_demo": "Signal quality + repeated trend + symptoms + mission atmosphere O2/pressure context.",
+        "flight_use_decision": "MISSION/CLINICAL APPROVAL REQUIRED",
+        "evidence_source_ids": [
+          "S26",
+          "S27",
+          "S28"
+        ],
+        "main_url": "https://www.brit-thoracic.org.uk/document-library/guidelines/emergency-oxygen/bts-guideline-for-oxygen-use-in-adults-in-healthcare-and-emergency-settings/",
+        "priority": "HIGH"
+      },
+      "first_aid_audit": {
+        "main_concern_in_original_actions": "Interpreting one value without accuracy warning",
+        "evidence_backed_principle": "FDA/BTS: inspect signal, context and trend; targets vary with physiology",
+        "recommended_action_text": "Verify sensor, repeat, compare with signs and atmosphere/suit oxygen; use approved crew protocol",
+        "do_not_automate": "Titrate oxygen solely from consumer oximeter reading",
+        "source_ids": [
+          "S26",
+          "S27"
+        ],
+        "source_link": "https://www.fda.gov/medical-devices/products-and-medical-procedures/pulse-oximeters",
+        "audit_result": "Needs clinical review"
+      },
+      "states": {
+        "GREEN": {
+          "key": "V04|GREEN",
+          "color": "GREEN",
+          "what_it_means": "Blood oxygen saturation is in the normal range.",
+          "first_aid_action": "No action needed. Keep routine monitoring.",
+          "prevention": "Keep cabin CO2, pressure and oxygen inside NASA-STD-3001 limits (see Environment_Limits E01–E03). Keep air circulating around sleep and work spots.",
+          "contact_ground_when": "Not needed. Report only if breathlessness or headache appears.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_LOW": {
+          "key": "V04|YELLOW_LOW",
+          "color": "YELLOW",
+          "what_it_means": "Oxygen saturation is slightly below normal.",
+          "first_aid_action": "Check the sensor first: warm, clean, still finger, good fit. Recheck after 1–2 minutes. Sit upright and breathe slowly and deeply. Check cabin alarms and CO2 (Environment_Limits E01) and make sure air is circulating where you are.",
+          "prevention": "Keep ventilation clear, avoid overexertion in poorly ventilated spots, and check the cabin atmosphere regularly.",
+          "contact_ground_when": "If it stays below the normal range on repeat checks, or with breathlessness, headache or confusion.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_LOW": {
+          "key": "V04|RED_LOW",
+          "color": "RED",
+          "what_it_means": "Oxygen saturation is critically low (hypoxia risk).",
+          "first_aid_action": "Quickly recheck the sensor, then stop all activity and sit upright with slow breathing. Check cabin alarms, CO2, pressure and any suit or mask oxygen supply. Follow the hypoxia / emergency procedure. Use supplemental oxygen only as the procedure says. Ask a crewmate to stay with you.",
+          "prevention": "After recovery: find and fix the cause (atmosphere, equipment, EVA gear) and log it.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_SYMPTOM": {
+          "key": "V04|RED_SYMPTOM",
+          "color": "RED",
+          "what_it_means": "Oxygen saturation looks normal, but severe breathlessness, confusion or bluish lips is present. The sensor may be wrong. Treat as RED.",
+          "first_aid_action": "Stop all activity. Ask a crewmate to stay with you. Recheck on another finger, check cabin atmosphere and follow the emergency procedure.",
+          "prevention": "After recovery: log the event and check equipment and cabin atmosphere.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        }
+      }
+    },
+    {
+      "metric_id": "V05",
+      "metric": "Body temperature",
+      "unit": "°C",
+      "why_measured_in_space": "Infection and immune changes; heat stress",
+      "how_measured_in_space": "Tempus Pro (S11)",
+      "normal_min": 36.1,
+      "normal_max": 37.2,
+      "critical_low": 35,
+      "critical_high": 37.9,
+      "evidence_note": "Fever >=38 C alone is NOT an automatic medical emergency. NEWS2 scores temperature alongside other variables and mental status. Hypothermia and urgent signs require context.",
+      "source_ids": [
+        "S11",
+        "S18",
+        "S28"
+      ],
+      "evidence_level": "C",
+      "demo_only": true,
+      "clinical_evidence_audit": {
+        "original_normal": "36.1-37.2 C",
+        "original_red_low": "<35 C",
+        "original_red_high": ">=38 C",
+        "grounded_adult_evidence": "NEWS2 recognizes low temperature and fever as parts of a combined assessment",
+        "not_established": "A single fever >=38 is not automatically a RED emergency in a healthy person",
+        "recommendation_for_demo": "Distinguish fever from emergency; use trend, symptoms and associated vitals.",
+        "flight_use_decision": "MISSION/CLINICAL APPROVAL REQUIRED",
+        "evidence_source_ids": [
+          "S28",
+          "S32"
+        ],
+        "main_url": "https://rcp.ac.uk/resources/national-early-warning-score-news-2/",
+        "priority": "MEDIUM"
+      },
+      "first_aid_audit": {
+        "main_concern_in_original_actions": "38 C fever automatically equals RED emergency",
+        "evidence_backed_principle": "NEWS2 considers temperature as one factor; severe symptoms are separate",
+        "recommended_action_text": "Recheck temperature and assess infection/heat symptoms along with other vitals",
+        "do_not_automate": "Prescribe antibiotics or call fever alone medical emergency",
+        "source_ids": [
+          "S28",
+          "S32"
+        ],
+        "source_link": "https://rcp.ac.uk/resources/national-early-warning-score-news-2/",
+        "audit_result": "Needs revision"
+      },
+      "states": {
+        "GREEN": {
+          "key": "V05|GREEN",
+          "color": "GREEN",
+          "what_it_means": "Body temperature is in the normal range.",
+          "first_aid_action": "No action needed. Keep routine monitoring.",
+          "prevention": "Wash hands, clean shared surfaces, keep the cabin within the comfort zone (Environment_Limits E05/E07), sleep well, and report early signs of infection.",
+          "contact_ground_when": "Not needed. Report if fever, chills or new symptoms appear.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_LOW": {
+          "key": "V05|YELLOW_LOW",
+          "color": "YELLOW",
+          "what_it_means": "Body temperature is slightly below normal.",
+          "first_aid_action": "Re-measure with correct thermometer placement. Add a clothing layer and warm up. Check cabin temperature (Environment_Limits E05). Recheck after 15 minutes.",
+          "prevention": "Keep layers available and the cabin in the 20–25 °C comfort zone (Environment_Limits E07).",
+          "contact_ground_when": "If it keeps falling, or with shivering, confusion or drowsiness.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_HIGH": {
+          "key": "V05|YELLOW_HIGH",
+          "color": "YELLOW",
+          "what_it_means": "Body temperature is slightly above normal (low-grade).",
+          "first_aid_action": "Re-measure after 15 minutes of rest (not right after exercise). Drink fluids and remove extra layers. Check cabin temperature and humidity. Watch for chills, cough, sore throat or urinary pain. Check heart rate. Log it.",
+          "prevention": "Hand hygiene, clean shared surfaces, hydration, good sleep. Report early signs of infection (UTI risk: see DFE-05).",
+          "contact_ground_when": "If it reaches fever level, keeps rising, or comes with a rising heart rate.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_LOW": {
+          "key": "V05|RED_LOW",
+          "color": "RED",
+          "what_it_means": "Body temperature is critically low.",
+          "first_aid_action": "Move to a warmer area and add insulating layers or blankets. Give a warm drink only if fully alert and able to swallow. Recheck with a reliable thermometer. Ask a crewmate to stay with you.",
+          "prevention": "After recovery: check cabin and suit thermal controls and log the event.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_HIGH": {
+          "key": "V05|RED_HIGH",
+          "color": "RED",
+          "what_it_means": "Fever. Possible infection.",
+          "first_aid_action": "Confirm with a working thermometer. Rest and drink fluids. Wear light clothing. Use a fever-reducing medicine only as directed by the flight surgeon (check expiry first, see DFE-06). Check heart rate and other vitals, and look for a source (urinary, respiratory, skin). Recheck temperature every few hours and log it.",
+          "prevention": "After recovery: review hand hygiene, surface cleaning and hydration. Report the likely source.",
+          "contact_ground_when": "Contact the flight surgeon now. Fever with a rising heart rate can be an early sign of sepsis (see DFE-05).",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_SYMPTOM": {
+          "key": "V05|RED_SYMPTOM",
+          "color": "RED",
+          "what_it_means": "Temperature looks normal, but severe illness signs (shaking chills, confusion, severe weakness) are present. Treat as RED.",
+          "first_aid_action": "Recheck the thermometer and all other vitals. Rest, drink fluids, and ask a crewmate to stay with you. Follow the emergency procedure.",
+          "prevention": "After recovery: log the event and review with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        }
+      }
+    },
+    {
+      "metric_id": "V06",
+      "metric": "Respiration rate",
+      "unit": "breaths/min",
+      "why_measured_in_space": "Respiratory status; CO2 buildup",
+      "how_measured_in_space": "Tempus Pro (S11)",
+      "normal_min": 12,
+      "normal_max": 20,
+      "critical_low": 10,
+      "critical_high": 24,
+      "evidence_note": "NEWS2 assigns scores to RR <=8 and >=25, but does NOT define universal solo RED emergencies; integrate SpO2, symptoms and consciousness.",
+      "source_ids": [
+        "S11",
+        "S18",
+        "S28"
+      ],
+      "evidence_level": "C",
+      "demo_only": true,
+      "clinical_evidence_audit": {
+        "original_normal": "12-20 /min",
+        "original_red_low": "<10 /min",
+        "original_red_high": ">=25 /min",
+        "grounded_adult_evidence": "NEWS2 hospital scoring flags <=8 and >=25 at high points but is a combined score",
+        "not_established": "No stand-alone NASA RR RED threshold from NEWS2",
+        "recommendation_for_demo": "Combine with breathing effort, oxygenation and level of consciousness; require clinical escalation policy.",
+        "flight_use_decision": "MISSION/CLINICAL APPROVAL REQUIRED",
+        "evidence_source_ids": [
+          "S28",
+          "S32"
+        ],
+        "main_url": "https://rcp.ac.uk/resources/national-early-warning-score-news-2/",
+        "priority": "HIGH"
+      },
+      "first_aid_audit": {
+        "main_concern_in_original_actions": "Suggesting slow breathing or moving to good airflow generically",
+        "evidence_backed_principle": "NEWS2 + AHA first aid: assess respiratory effort and mental status",
+        "recommended_action_text": "Check effort, responsiveness, SpO2, RR trend and suit/cabin status; crew medical evaluation if concerning",
+        "do_not_automate": "Force breathing rate or change cabin controls without procedure",
+        "source_ids": [
+          "S28",
+          "S32"
+        ],
+        "source_link": "https://cpr.heart.org/en/resuscitation-science/2024-first-aid-guidelines",
+        "audit_result": "Needs revision"
+      },
+      "states": {
+        "GREEN": {
+          "key": "V06|GREEN",
+          "color": "GREEN",
+          "what_it_means": "Breathing rate is in the normal range.",
+          "first_aid_action": "No action needed. Keep routine monitoring.",
+          "prevention": "Keep cabin CO2 under the operating limit (Environment_Limits E01), keep air circulating, and keep up regular aerobic exercise.",
+          "contact_ground_when": "Not needed. Report if breathing feels difficult.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_LOW": {
+          "key": "V06|YELLOW_LOW",
+          "color": "YELLOW",
+          "what_it_means": "Breathing rate is slightly below normal.",
+          "first_aid_action": "Count breaths for a full minute while at rest, without thinking about it. Check for unusual drowsiness. Do not take sedating medicine until you have checked with the flight surgeon. Check cabin CO2 and ventilation.",
+          "prevention": "Avoid sedating medications unless prescribed. Keep cabin CO2 low.",
+          "contact_ground_when": "If it stays low, or you feel very sleepy or hard to wake.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_HIGH": {
+          "key": "V06|YELLOW_HIGH",
+          "color": "YELLOW",
+          "what_it_means": "Breathing rate is slightly above normal.",
+          "first_aid_action": "Rest, sit upright and breathe slowly (in for 4 seconds, out for 6). Recheck after 5 minutes. Check cabin CO2 and ventilation alarms. Consider pain, anxiety or fever as causes.",
+          "prevention": "Keep ventilation clear and CO2 low. Keep up aerobic fitness and manage stress.",
+          "contact_ground_when": "If it is still high after rest, or breathing feels hard.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_LOW": {
+          "key": "V06|RED_LOW",
+          "color": "RED",
+          "what_it_means": "Breathing rate is critically low.",
+          "first_aid_action": "Check that you are awake and responsive. Stimulate and wake the person if needed. If they are unresponsive or breathing is very slow, follow the emergency procedure. Check what sedating or opioid medicine was taken, and cabin CO2.",
+          "prevention": "After recovery: review medicines and cabin ventilation with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_HIGH": {
+          "key": "V06|RED_HIGH",
+          "color": "RED",
+          "what_it_means": "Breathing rate is critically high.",
+          "first_aid_action": "Stop all activity and sit upright with slow breathing. Check cabin atmosphere (CO2, pressure, oxygen) and move to an area with good airflow. Follow the respiratory emergency procedure. Ask a crewmate to stay with you.",
+          "prevention": "After recovery: find and fix the cause (atmosphere, fever, anxiety) and log it.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_SYMPTOM": {
+          "key": "V06|RED_SYMPTOM",
+          "color": "RED",
+          "what_it_means": "Severe breathlessness at any breathing rate. Treat as RED.",
+          "first_aid_action": "Stop all activity and sit upright. Check cabin atmosphere and move to good airflow. Follow the respiratory emergency procedure. Ask a crewmate to stay with you.",
+          "prevention": "After recovery: log the event and check cabin atmosphere and equipment.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        }
+      }
+    },
+    {
+      "metric_id": "V07",
+      "metric": "Fasting blood glucose",
+      "unit": "mg/dL",
+      "why_measured_in_space": "Nutrition, stress and metabolic health (named in the challenge brief)",
+      "how_measured_in_space": "Glucometer (not listed in the provided NASA sources; confirm hardware)",
+      "normal_min": 70,
+      "normal_max": 99,
+      "critical_low": 54,
+      "critical_high": 125,
+      "evidence_note": "ADA 2026: <70 low, <54 clinically important level 2. Fasting plasma glucose >=126 is a DIAGNOSTIC criterion requiring confirmation, NOT automatic RED emergency. Original >=126 RED is unsupported.",
+      "source_ids": [
+        "S18",
+        "S29",
+        "S30",
+        "S32"
+      ],
+      "evidence_level": "C",
+      "demo_only": true,
+      "clinical_evidence_audit": {
+        "original_normal": "70-99 mg/dL",
+        "original_red_low": "<54 mg/dL",
+        "original_red_high": ">=126 mg/dL",
+        "grounded_adult_evidence": "ADA 2026: <70 low; <54 level-2 hypoglycemia; fasting plasma >=126 diagnostic criterion",
+        "not_established": ">=126 NOT emergency RED; diagnostic confirmation required; capillary device may differ from lab plasma",
+        "recommendation_for_demo": "Flag <70 low; <54 urgent review with symptoms; >=126 diagnostic-review, NOT automatic emergency.",
+        "flight_use_decision": "CHANGE RED HIGH LOGIC BEFORE REAL USE",
+        "evidence_source_ids": [
+          "S29",
+          "S30",
+          "S32"
+        ],
+        "main_url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12690178/",
+        "priority": "CRITICAL"
+      },
+      "first_aid_audit": {
+        "main_concern_in_original_actions": ">=126 is diagnostic-range, not acute RED; some oral-sugar instructions need swallowing safeguard",
+        "evidence_backed_principle": "ADA: <70 and <54 are clinically relevant lows; AHA: oral glucose only if alert and can swallow",
+        "recommended_action_text": "For suspected low sugar confirm/recheck; use mission-approved oral glucose guidance only if awake and can swallow; for >=126 refer for diagnostic confirmation",
+        "do_not_automate": "Treat >=126 alone as emergency or give oral intake to unconscious person",
+        "source_ids": [
+          "S29",
+          "S30",
+          "S32"
+        ],
+        "source_link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12690178/",
+        "audit_result": "CRITICAL correction"
+      },
+      "states": {
+        "GREEN": {
+          "key": "V07|GREEN",
+          "color": "GREEN",
+          "what_it_means": "Fasting blood glucose is in the normal range.",
+          "first_aid_action": "No action needed. Keep routine monitoring.",
+          "prevention": "Eat balanced meals on a regular schedule, log your intake, and keep up daily exercise.",
+          "contact_ground_when": "Not needed. Report only if symptoms appear.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_LOW": {
+          "key": "V07|YELLOW_LOW",
+          "color": "YELLOW",
+          "what_it_means": "Fasting glucose is slightly low.",
+          "first_aid_action": "If you feel shaky, sweaty or confused, take about 15 g of fast-acting sugar (juice or glucose), then recheck after 15 minutes. After that, eat a proper snack or meal.",
+          "prevention": "Do not skip meals. Match food intake to exercise load and log it.",
+          "contact_ground_when": "If it stays low, repeats on several days, or symptoms continue.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_HIGH": {
+          "key": "V07|YELLOW_HIGH",
+          "color": "YELLOW",
+          "what_it_means": "Fasting glucose is slightly high.",
+          "first_aid_action": "Confirm you were truly fasting (at least 8 hours without food) and repeat the test another morning. Drink water, avoid sugary food and drinks, and log meals.",
+          "prevention": "Balanced meals, regular exercise, steady weight, limit sugary food and drinks.",
+          "contact_ground_when": "If readings stay in this range for several days, or with thirst, frequent urination or blurred vision.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_LOW": {
+          "key": "V07|RED_LOW",
+          "color": "RED",
+          "what_it_means": "Fasting glucose is critically low (hypoglycemia).",
+          "first_aid_action": "Treat now: take about 15 g of fast-acting sugar (juice or glucose gel) and recheck after 15 minutes; repeat if still low. If confused, unable to swallow safely or unresponsive, give nothing by mouth. Follow the emergency procedure and ask a crewmate for help.",
+          "prevention": "After recovery: review meal timing, exercise and any medicines with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_HIGH": {
+          "key": "V07|RED_HIGH",
+          "color": "RED",
+          "what_it_means": "DEMO RED only: fasting glucose >=126 mg/dL is a diagnostic-range result, not an emergency by itself.",
+          "first_aid_action": "Confirm fasting status and measurement; record the value; arrange clinician-directed confirmation and assessment. Use the mission medical protocol if there are acute symptoms.",
+          "prevention": "After review: follow the flight surgeon's advice on diet and exercise.",
+          "contact_ground_when": "Contact flight medical team for interpretation; urgent review if severe symptoms or clinical deterioration.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_SYMPTOM": {
+          "key": "V07|RED_SYMPTOM",
+          "color": "RED",
+          "what_it_means": "Glucose looks acceptable, but there is confusion or severe weakness. Treat as RED.",
+          "first_aid_action": "Recheck the glucometer and strip. Stay with a crewmate. Follow the emergency procedure.",
+          "prevention": "After recovery: log the event and review with the flight surgeon.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        }
+      }
+    },
+    {
+      "metric_id": "V08",
+      "metric": "End-tidal CO2 (EtCO2)",
+      "unit": "mmHg",
+      "why_measured_in_space": "Breathing adequacy; CO2 exposure",
+      "how_measured_in_space": "Tempus Pro (S11)",
+      "normal_min": 35,
+      "normal_max": 45,
+      "critical_low": null,
+      "critical_high": 50,
+      "evidence_note": "EtCO2 35-45 adult reference; NO verified NASA low-side RED. <30 is a pediatric sedation study definition, NOT NASA guidance. >50 is Miner 2002 ADULT PROCEDURAL SEDATION study criterion (74 patients; abstract), NOT universal astronaut RED; waveform loss and baseline change also mattered.",
+      "source_ids": [
+        "S11",
+        "S18",
+        "S22",
+        "S31",
+        "S35",
+        "S36"
+      ],
+      "evidence_level": "C",
+      "demo_only": true,
+      "clinical_evidence_audit": {
+        "original_normal": "35-45 mmHg",
+        "original_red_low": "BLANK",
+        "original_red_high": ">50 mmHg",
+        "grounded_adult_evidence": "Review normal 35-45; Miner 2002 used >50 in ED sedation, plus waveform loss or >10 mmHg change; <30 used in pediatric sedation context",
+        "not_established": "Neither <30 nor >50 is a universal astronaut red limit; no validated numeric lower bound found",
+        "recommendation_for_demo": "Leave numeric low RED blank; treat >50 as study-only candidate; monitor waveform, baseline trend, symptoms and sampling quality.",
+        "flight_use_decision": "NO VALIDATED NASA RED THRESHOLD",
+        "evidence_source_ids": [
+          "S22",
+          "S31",
+          "S35",
+          "S36"
+        ],
+        "main_url": "https://www.ncbi.nlm.nih.gov/books/NBK539754/",
+        "priority": "CRITICAL"
+      },
+      "first_aid_audit": {
+        "main_concern_in_original_actions": "Low and high explanations overclaim and encourage breathing pattern changes",
+        "evidence_backed_principle": "Capnography needs waveform, trends, symptoms and equipment assessment",
+        "recommended_action_text": "Verify waveform and sampling; corroborate RR/SpO2/symptoms; notify trained crew medical person according to mission protocol",
+        "do_not_automate": "Treat <30 or >50 as NASA red, advise arbitrary fan adjustment",
+        "source_ids": [
+          "S22",
+          "S31",
+          "S35",
+          "S36"
+        ],
+        "source_link": "https://pubmed.ncbi.nlm.nih.gov/11927449/",
+        "audit_result": "CRITICAL correction"
+      },
+      "states": {
+        "GREEN": {
+          "key": "V08|GREEN",
+          "color": "GREEN",
+          "what_it_means": "End-tidal CO2 is in the normal range.",
+          "first_aid_action": "No action needed. Keep routine monitoring.",
+          "prevention": "Keep cabin CO2 under the operating limit (Environment_Limits E01), keep air circulating, and breathe steadily during exercise.",
+          "contact_ground_when": "Not needed. Report if headache or breathlessness appears.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_LOW": {
+          "key": "V08|YELLOW_LOW",
+          "color": "YELLOW",
+          "what_it_means": "A low EtCO2 value is nonspecific: sample-line error, ventilation or circulation may affect it.",
+          "first_aid_action": "Check signal/waveform quality and sampling connection; repeat measurement; interpret alongside breathing, SpO2, crew symptoms and baseline.",
+          "prevention": "Practice calm, steady breathing. Check the sampling line before measuring.",
+          "contact_ground_when": "If it stays low with tingling, dizziness or breathlessness.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "YELLOW_HIGH": {
+          "key": "V08|YELLOW_HIGH",
+          "color": "YELLOW",
+          "what_it_means": "EtCO2 is above the adult reference range; interpretation requires waveform and clinical context.",
+          "first_aid_action": "Recheck capnogram signal and trends; compare breathing rate, SpO2 and cabin CO2; alert the trained medical officer if sustained or symptomatic.",
+          "prevention": "Keep cabin CO2 low and air circulating, especially in sleep areas.",
+          "contact_ground_when": "If it stays high, or with headache, drowsiness or breathlessness.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_LOW": {
+          "key": "V08|RED_LOW",
+          "color": "RED",
+          "what_it_means": "No verified numeric low-side RED for an astronaut; this row is reached by a symptom override in the current demo.",
+          "first_aid_action": "Assess the crew member and monitor breathing and responsiveness; confirm sensor function; follow mission-approved respiratory emergency checklist.",
+          "prevention": "After recovery: log the event and check equipment and cabin atmosphere.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        },
+        "RED_HIGH": {
+          "key": "V08|RED_HIGH",
+          "color": "RED",
+          "what_it_means": "The 50 mmHg cutoff came from a small adult procedural-sedation study, not a validated astronaut emergency trigger.",
+          "first_aid_action": "Confirm waveform and repeat reading; evaluate symptoms and other respiratory measurements; use mission-approved medical response if clinically unstable.",
+          "prevention": "After recovery: find and fix the cause of the CO2 build-up and log it.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18",
+            "S22"
+          ]
+        },
+        "RED_SYMPTOM": {
+          "key": "V08|RED_SYMPTOM",
+          "color": "RED",
+          "what_it_means": "Severe breathlessness or confusion overrides apparently normal EtCO2; headache alone is nonspecific.",
+          "first_aid_action": "Ask for help from trained crew medical personnel; assess clinical status and sensor quality; follow onboard medical emergency procedures.",
+          "prevention": "After recovery: log the event and check cabin atmosphere.",
+          "contact_ground_when": "Contact the flight surgeon immediately.",
+          "evidence_level": "C",
+          "source_ids": [
+            "S11",
+            "S18"
+          ]
+        }
+      }
+    }
+  ],
+  "knowledge_base": [
+    {
+      "id": "DFE-01",
+      "hazard_category": "Distance from Earth",
+      "secondary_hazards": [
+        "Isolation and Confinement"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Systems Operations Support",
+      "condition_name": "Communication delay / loss of real-time ground support",
+      "status_type": "Scenario",
+      "metric_to_monitor": "One-way communication delay",
+      "unit": "minutes",
+      "measured_in_space": "Mission communication link logs",
+      "normal_range": "Near real-time on ISS",
+      "warning_threshold": "Delay grows with distance: up to ~20 min one-way cited for Mars (~22.5 min at farthest approach); up to 5 min each way used in HERA simulations",
+      "symptoms": "Strain on behavioral health, performance and team coordination",
+      "recommended_action": "Handle the situation with onboard procedures, then send a report of what was done and ask for advice (consultation, not real-time guidance); use asynchronous messaging tools",
+      "contact_ground_when": "After any medical or system event, send a status report even if the reply will be delayed",
+      "severity": "Routine",
+      "source_ids": [
+        "S01",
+        "S14",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "DFE-02",
+      "hazard_category": "Distance from Earth",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Systems Operations Support",
+      "condition_name": "Earth-independent system operations (malfunction response)",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Ability to resolve malfunctions without ground support",
+      "unit": "n/a",
+      "measured_in_space": "Mission simulations; crew training records",
+      "normal_range": "LEO and lunar missions under 30 days: ground support can mitigate malfunctions and errors",
+      "warning_threshold": "Lunar missions over 30 days and any Mars mission: high (red) risk of loss of crew or mission",
+      "symptoms": "Crew unable to respond adequately to critical malfunctions or to perform safety-critical procedures",
+      "recommended_action": "Use onboard procedures and just-in-time training; rely on pre-mission simulator training (about 300 simulator hours on average for NASA astronauts, per team sheet)",
+      "contact_ground_when": "When a malfunction cannot be resolved with onboard procedures",
+      "severity": "Urgent",
+      "source_ids": [
+        "S13",
+        "S14",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "DFE-03",
+      "hazard_category": "Distance from Earth",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Medical conditions in mission (NASA risk-by-hazard list)",
+      "condition_name": "Delayed medical evacuation",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Time to definitive medical care on Earth",
+      "unit": "hours / days",
+      "measured_in_space": "Mission planning data",
+      "normal_range": "ISS: a few hours to about 36 hours",
+      "warning_threshold": "Moon: about 3 days (possibly 6+); Mars: evacuation timeframe improves only near the end of the mission",
+      "symptoms": "Condition worsens before definitive care is available",
+      "recommended_action": "Stabilize and sustain the patient with onboard capability for a much longer period; start remote consultation early",
+      "contact_ground_when": "As soon as a serious injury or illness is suspected",
+      "severity": "Emergency",
+      "source_ids": [
+        "S12",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "RED",
+      "action_focus": "Emergency action now and contact the flight surgeon"
+    },
+    {
+      "id": "DFE-04",
+      "hazard_category": "Distance from Earth",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Medical conditions in mission (NASA risk-by-hazard list)",
+      "condition_name": "Medical emergency requiring autonomous care",
+      "status_type": "Numeric",
+      "metric_to_monitor": "BP, ECG/heart rate, EtCO2, respiration rate, SpO2, temperature, ultrasound",
+      "unit": "see Vital_Thresholds",
+      "measured_in_space": "Tempus Pro with built-in step-by-step guidance (iAssist); telemedicine link; ultrasound learning module",
+      "normal_range": "See Vital_Thresholds sheet",
+      "warning_threshold": "See Vital_Thresholds sheet",
+      "symptoms": "Depends on the condition",
+      "recommended_action": "Use Tempus Pro guidance to collect vitals and images; share data for near-real-time remote diagnosis",
+      "contact_ground_when": "Any RED vital sign, or any YELLOW sign with worsening symptoms",
+      "severity": "Emergency",
+      "source_ids": [
+        "S03",
+        "S10",
+        "S11"
+      ],
+      "evidence_level": "A",
+      "color_level": "RED",
+      "action_focus": "Emergency action now and contact the flight surgeon"
+    },
+    {
+      "id": "DFE-05",
+      "hazard_category": "Distance from Earth",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Medical conditions in mission (NASA risk-by-hazard list)",
+      "condition_name": "Urinary tract infection progressing to sepsis",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Heart rate trend; body temperature",
+      "unit": "bpm; °C",
+      "measured_in_space": "Tempus Pro vitals; thermometer",
+      "normal_range": "Vitals within Vital_Thresholds",
+      "warning_threshold": "Rising heart-rate trend and/or fever (38.0 °C or higher)",
+      "symptoms": "Fever; worsening condition; rising heart rate",
+      "recommended_action": "Act while the problem is small: confirm temperature with a working thermometer, report, and use an effective antibiotic as directed by the flight surgeon",
+      "contact_ground_when": "Fever with a rising heart rate, or any worsening",
+      "severity": "Urgent",
+      "source_ids": [
+        "S17",
+        "S18"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "DFE-06",
+      "hazard_category": "Distance from Earth",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Pharm risk (NASA risk-by-hazard list)",
+      "condition_name": "Medication degradation / expiry",
+      "status_type": "Pass-Fail",
+      "metric_to_monitor": "Expiry date versus mission end; storage conditions",
+      "unit": "date",
+      "measured_in_space": "Medical kit inventory check",
+      "normal_range": "Within labeled expiry for the whole mission",
+      "warning_threshold": "Expired or will expire during the mission (team sheet: only ~16% of ISS medications stay within labeled expiry for a Mars round trip)",
+      "symptoms": "Reduced or no drug effect",
+      "recommended_action": "Check expiry before relying on any medication; report to ground; follow flight-surgeon guidance on alternatives",
+      "contact_ground_when": "Before using any expired or near-expiry medication, especially in an emergency",
+      "severity": "Routine",
+      "source_ids": [
+        "S12",
+        "S13",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "DFE-07",
+      "hazard_category": "Distance from Earth",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Medical conditions in mission (NASA risk-by-hazard list)",
+      "condition_name": "Medical equipment failure",
+      "status_type": "Pass-Fail",
+      "metric_to_monitor": "Calibration check result",
+      "unit": "pass / fail",
+      "measured_in_space": "Device calibration check",
+      "normal_range": "Calibration check passed",
+      "warning_threshold": "Calibration fails or the device reports an error",
+      "symptoms": "Missing or unreliable readings",
+      "recommended_action": "Repeat the measurement; run the calibration check; use a backup device or manual method; report the fault",
+      "contact_ground_when": "If a critical device (vitals monitor, ultrasound) fails during an emergency",
+      "severity": "Urgent",
+      "source_ids": [
+        "S10",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "DFE-08",
+      "hazard_category": "Distance from Earth",
+      "secondary_hazards": [
+        "Hostile/Closed Environments"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Food and Nutrition",
+      "condition_name": "Inadequate food (limited resupply, menu fatigue)",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Food acceptability (appeal) and daily intake",
+      "unit": "self-rated",
+      "measured_in_space": "Meal logs; food acceptability survey",
+      "normal_range": "Eating enough; food acceptable",
+      "warning_threshold": "Eating less than needed because of menu fatigue or low morale",
+      "symptoms": "Fatigue; nutrient deficiency leading to health problems",
+      "recommended_action": "Choose varied, nutritious items; log intake; report repeated low intake",
+      "contact_ground_when": "If low intake continues for several days, or fatigue or weight loss appear",
+      "severity": "Routine",
+      "source_ids": [
+        "S02",
+        "S03",
+        "S12",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "GRV-01",
+      "hazard_category": "Gravity Fields",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Spaceflight-Induced Bone Changes",
+      "condition_name": "Bone mineral density loss",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Bone mineral density change from pre-flight baseline",
+      "unit": "% change",
+      "measured_in_space": "Periodic bone scan; exercise logs",
+      "normal_range": "Stable versus pre-flight baseline",
+      "warning_threshold": "Average loss of about 1–1.5% per month in space (team sheet; verify)",
+      "symptoms": "Bone weakness; increased fracture risk; premature osteoporosis",
+      "recommended_action": "Do your resistance exercise routine; keep scheduled bone scans; follow flight-surgeon advice on diet and medication",
+      "contact_ground_when": "If a scan shows loss beyond plan, or after any impact with bone pain",
+      "severity": "Preventive",
+      "source_ids": [
+        "S02",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "GREEN",
+      "action_focus": "Prevention: do the routine measures that stop the problem"
+    },
+    {
+      "id": "GRV-02",
+      "hazard_category": "Gravity Fields",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Spaceflight Associated Neuro-ocular Syndrome (SANS)",
+      "condition_name": "Spaceflight Associated Neuro-ocular Syndrome (SANS)",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Vision changes; optic disc swelling, retinal folds, globe flattening (imaging)",
+      "unit": "n/a",
+      "measured_in_space": "Self vision checks; eye imaging",
+      "normal_range": "No new vision change; stable imaging",
+      "warning_threshold": "Any new or worsening blurred vision or near-vision change; abnormal imaging",
+      "symptoms": "Optic nerve swelling; retinal folds; flattening of the back of the eye; vision problems",
+      "recommended_action": "Record any vision change; do eye checks as scheduled; report findings (B-vitamin and thigh-cuff studies are research, not instructions)",
+      "contact_ground_when": "Any new or worsening vision change",
+      "severity": "Urgent",
+      "source_ids": [
+        "S02",
+        "S03",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "GRV-03",
+      "hazard_category": "Gravity Fields",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Reduced Cardiorespiratory and Musculoskeletal Fitness",
+      "condition_name": "Muscle weakness and reduced physical fitness",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Muscle strength, aerobic fitness, endurance versus pre-mission",
+      "unit": "% of pre-mission",
+      "measured_in_space": "Exercise equipment performance logs; periodic fitness self-evaluation",
+      "normal_range": "Maintained near pre-mission level",
+      "warning_threshold": "More than 20% loss of pre-mission fitness (team sheet)",
+      "symptoms": "Weakness; reduced endurance; poorer coordination; higher risk of falls and injury",
+      "recommended_action": "Do daily resistance and aerobic exercise; complete periodic fitness self-evaluations",
+      "contact_ground_when": "If loss exceeds 20% or you have an injury or fall",
+      "severity": "Preventive",
+      "source_ids": [
+        "S02",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "GREEN",
+      "action_focus": "Prevention: do the routine measures that stop the problem"
+    },
+    {
+      "id": "GRV-04",
+      "hazard_category": "Gravity Fields",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Cardiovascular Adaptations",
+      "condition_name": "Low blood pressure / fainting (cardiovascular adaptation)",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Blood pressure (sitting and standing); heart rate",
+      "unit": "mmHg; bpm",
+      "measured_in_space": "Blood pressure cuff or Tempus Pro",
+      "normal_range": "See Vital_Thresholds",
+      "warning_threshold": "Low BP with dizziness; higher fainting risk at landing",
+      "symptoms": "Light-headedness; fainting",
+      "recommended_action": "Use lower-body compression garments; drink fluids before landing; keep exercising; eat a healthy diet",
+      "contact_ground_when": "Fainting, or low BP with symptoms",
+      "severity": "Urgent",
+      "source_ids": [
+        "S02",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "GRV-05",
+      "hazard_category": "Gravity Fields",
+      "secondary_hazards": [
+        "Distance from Earth"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Cardiovascular Adaptations",
+      "condition_name": "Cardiac arrhythmia (e.g., atrial fibrillation)",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Heart rate; heart rhythm (ECG)",
+      "unit": "bpm",
+      "measured_in_space": "3-lead ECG via Tempus Pro",
+      "normal_range": "Heart rate 60–100 bpm, regular rhythm",
+      "warning_threshold": "Irregular rhythm, or heart rate outside Vital_Thresholds",
+      "symptoms": "Palpitations, dizziness, chest discomfort or breathlessness (general clinical signs)",
+      "recommended_action": "Record an ECG, rest, and follow the cardiovascular-emergency procedure and training",
+      "contact_ground_when": "Any irregular rhythm with symptoms, immediately",
+      "severity": "Emergency",
+      "source_ids": [
+        "S02",
+        "S11",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "RED",
+      "action_focus": "Emergency action now and contact the flight surgeon"
+    },
+    {
+      "id": "GRV-06",
+      "hazard_category": "Gravity Fields",
+      "secondary_hazards": [
+        "Distance from Earth"
+      ],
+      "related_nasa_risk_or_standard": "Venous Haemostasis study (HRP research)",
+      "condition_name": "Venous blood clot (internal jugular vein thrombosis)",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Jugular vein ultrasound flow; blood pressure; blood tests",
+      "unit": "n/a",
+      "measured_in_space": "Ultrasound guided in real time; images read by Earth radiologists",
+      "normal_range": "Normal forward blood flow",
+      "warning_threshold": "Stagnant or retrograde flow (team sheet: 6 of 11 crew by about flight day 50; 1 clot; verify)",
+      "symptoms": "May be silent: the crew member with a clot had no headache or flushed face",
+      "recommended_action": "Do the guided ultrasound and send images to ground; follow-up ultrasound confirms; treatment is decided by the flight surgeon (lower-body negative pressure improved flow in 10 of 17 sessions, per team sheet)",
+      "contact_ground_when": "Any abnormal flow finding or suspected clot",
+      "severity": "Urgent",
+      "source_ids": [
+        "S03",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "GRV-07",
+      "hazard_category": "Gravity Fields",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Altered Sensorimotor and Vestibular Function",
+      "condition_name": "Space motion sickness / gravity-transition effects",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Balance, head-eye and hand-eye coordination, orientation",
+      "unit": "n/a",
+      "measured_in_space": "Self-report; simple balance and coordination tests",
+      "normal_range": "Stable balance; no dizziness",
+      "warning_threshold": "Dizziness, nausea, balance or coordination problems",
+      "symptoms": "Motion sickness; light-headedness; difficulty walking or operating a vehicle",
+      "recommended_action": "Move slowly; avoid vehicle operation and safety-critical tasks until recovered; log symptoms",
+      "contact_ground_when": "If symptoms persist or prevent safety-critical tasks",
+      "severity": "Routine",
+      "source_ids": [
+        "S02",
+        "S03"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "GRV-08",
+      "hazard_category": "Gravity Fields",
+      "secondary_hazards": [
+        "Distance from Earth",
+        "Hostile/Closed Environments"
+      ],
+      "related_nasa_risk_or_standard": "Renal stone risk (NASA risk interface analysis)",
+      "condition_name": "Kidney stones (risk and acute episode)",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Hydration status; urinary calcium; abdominal pain",
+      "unit": "mL/day; mg/dL",
+      "measured_in_space": "Fluid-intake log; urine samples; ultrasound for a suspected stone",
+      "normal_range": "Adequate hydration",
+      "warning_threshold": "Low urine volume or high urinary calcium; severe lower abdominal pain; blood in urine",
+      "symptoms": "Dehydration; increased calcium excretion from bone",
+      "recommended_action": "Prevention: hydrate and follow nutrition guidance. Suspected stone: ultrasound, pain medication, rest, report and ask for advice",
+      "contact_ground_when": "Severe abdominal or flank pain, or blood in urine",
+      "severity": "Urgent",
+      "source_ids": [
+        "S16",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "GRV-09",
+      "hazard_category": "Gravity Fields",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Injury from Dynamic Loads",
+      "condition_name": "Injury from dynamic loads (landing)",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Forces during landing; crew discomfort surveys with spacecraft sensor data",
+      "unit": "n/a",
+      "measured_in_space": "Spacecraft sensors; crew surveys",
+      "normal_range": "Within vehicle limits",
+      "warning_threshold": "Injury during landing",
+      "symptoms": "Pain or injury after landing",
+      "recommended_action": "Follow landing and restraint procedures; report any pain after landing",
+      "contact_ground_when": "Any post-landing injury or pain",
+      "severity": "Urgent",
+      "source_ids": [
+        "S02",
+        "S03"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "ISO-01",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Sleep and Irregular Schedules",
+      "condition_name": "Insufficient sleep",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Sleep duration",
+      "unit": "hours/night",
+      "measured_in_space": "Wrist actigraphy (motion, sleep, light); sleep log",
+      "normal_range": "7–9 hours/night (general adult reference)",
+      "warning_threshold": "Less than 7 hours for 2 consecutive nights",
+      "symptoms": "Fatigue; reduced alertness; poor concentration",
+      "recommended_action": "Protect your sleep window, reduce nonessential workload, and check cabin noise and lighting (see HCE rows)",
+      "contact_ground_when": "If the warning persists after you adjusted schedule and environment, or sleepiness affects safety-critical tasks",
+      "severity": "Routine",
+      "source_ids": [
+        "S02",
+        "S03",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "ISO-02",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Sleep and Irregular Schedules",
+      "condition_name": "Irregular sleep schedule",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Sleep/wake timing variation versus personal baseline",
+      "unit": "hours",
+      "measured_in_space": "Wrist actigraphy; sleep log",
+      "normal_range": "Consistent sleep and wake times relative to personal baseline",
+      "warning_threshold": "Significant deviation from baseline for 2 or more days",
+      "symptoms": "Daytime sleepiness; fatigue; difficulty staying alert",
+      "recommended_action": "Keep a consistent sleep-wake schedule; review lighting and work schedule",
+      "contact_ground_when": "If deviation continues despite schedule changes",
+      "severity": "Routine",
+      "source_ids": [
+        "S02",
+        "S03",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "ISO-03",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Sleep and Irregular Schedules",
+      "condition_name": "Poor sleep efficiency",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Sleep efficiency",
+      "unit": "%",
+      "measured_in_space": "Wrist actigraphy",
+      "normal_range": "About 85% or higher",
+      "warning_threshold": "Less than 85% repeatedly",
+      "symptoms": "Unrefreshing sleep; frequent awakenings; daytime fatigue",
+      "recommended_action": "Review your sleep environment and keep monitoring",
+      "contact_ground_when": "If low efficiency continues alongside daytime fatigue",
+      "severity": "Routine",
+      "source_ids": [
+        "S02",
+        "S03",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "ISO-04",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Behavioral Changes and Psychiatric Disorders",
+      "condition_name": "High psychological stress",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Self-reported stress score",
+      "unit": "1–5",
+      "measured_in_space": "In-app questionnaire (team design); HRP Standard Measures include psychological measures",
+      "normal_range": "Stable relative to personal baseline",
+      "warning_threshold": "Score 4–5, or a rise of 2 points from baseline",
+      "symptoms": "Feeling overwhelmed; irritability; difficulty relaxing",
+      "recommended_action": "Use stress-management strategies and review your workload; ask for support",
+      "contact_ground_when": "If high scores persist or affect your work or sleep",
+      "severity": "Routine",
+      "source_ids": [
+        "S02",
+        "S03",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "ISO-05",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Behavioral Changes and Psychiatric Disorders",
+      "condition_name": "Low mood",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Self-reported mood score",
+      "unit": "1–5",
+      "measured_in_space": "In-app questionnaire (team design)",
+      "normal_range": "Stable relative to personal baseline",
+      "warning_threshold": "Score 2 or lower, or a persistent decrease from baseline",
+      "symptoms": "Low motivation; reduced interest; negative mood",
+      "recommended_action": "Connect with crewmates, use scheduled psychological support, and keep tracking your mood",
+      "contact_ground_when": "If low mood persists. Any thought of self-harm: tell a crewmate and ground medical or psychological support immediately",
+      "severity": "Urgent",
+      "source_ids": [
+        "S02",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "ISO-06",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Sleep and Irregular Schedules",
+      "condition_name": "Mental fatigue",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Self-reported mental fatigue score",
+      "unit": "1–5",
+      "measured_in_space": "In-app questionnaire (team design)",
+      "normal_range": "Low and stable relative to personal baseline",
+      "warning_threshold": "Score 4–5 on 2 consecutive assessments",
+      "symptoms": "Difficulty concentrating; mental exhaustion; reduced alertness",
+      "recommended_action": "Take recovery time, review workload, and reassess",
+      "contact_ground_when": "If fatigue persists or affects safety-critical tasks",
+      "severity": "Routine",
+      "source_ids": [
+        "S02",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "ISO-07",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [
+        "Space Radiation"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Sleep and Irregular Schedules",
+      "condition_name": "Reduced attention",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Attention test score",
+      "unit": "0–100",
+      "measured_in_space": "Brief in-app test (team design)",
+      "normal_range": "Within 10% of personal baseline",
+      "warning_threshold": "More than 10% decrease from baseline on repeated tests",
+      "symptoms": "Reduced focus; more errors; difficulty completing tasks",
+      "recommended_action": "Repeat the test; review sleep and fatigue; adjust workload",
+      "contact_ground_when": "If the decrease repeats across tests",
+      "severity": "Routine",
+      "source_ids": [
+        "S02",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "ISO-08",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [
+        "Space Radiation"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Sleep and Irregular Schedules",
+      "condition_name": "Slower reaction time",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Reaction time",
+      "unit": "milliseconds",
+      "measured_in_space": "Brief in-app test (team design)",
+      "normal_range": "Within personal baseline range",
+      "warning_threshold": "More than 20% increase from baseline on repeated tests",
+      "symptoms": "Slower responses; reduced alertness; delayed reactions",
+      "recommended_action": "Repeat the test; review sleep and fatigue; keep monitoring",
+      "contact_ground_when": "If slowing repeats, especially before safety-critical tasks",
+      "severity": "Routine",
+      "source_ids": [
+        "S02",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "ISO-09",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Sleep and Irregular Schedules",
+      "condition_name": "Reduced memory performance",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Memory test score",
+      "unit": "0–100",
+      "measured_in_space": "Brief in-app test (team design)",
+      "normal_range": "Within 10% of personal baseline",
+      "warning_threshold": "More than 10% decrease from baseline on repeated tests",
+      "symptoms": "Difficulty recalling information; memory errors",
+      "recommended_action": "Repeat the test; review sleep patterns; keep monitoring",
+      "contact_ground_when": "If the decrease repeats across tests",
+      "severity": "Routine",
+      "source_ids": [
+        "S02",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "ISO-10",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [
+        "Distance from Earth"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Inadequate Teamwork",
+      "condition_name": "Team conflict / reduced cohesion",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Self-reported team cohesion or conflict rating",
+      "unit": "1–5",
+      "measured_in_space": "In-app questionnaire (team design)",
+      "normal_range": "Stable relative to personal baseline",
+      "warning_threshold": "Sustained drop, or an unresolved conflict",
+      "symptoms": "Tension; miscommunication; withdrawal",
+      "recommended_action": "Use structured crew debriefs; address issues early and calmly; ask for support",
+      "contact_ground_when": "If conflict is unresolved or affects safety or work",
+      "severity": "Routine",
+      "source_ids": [
+        "S01",
+        "S02"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "ISO-11",
+      "hazard_category": "Isolation and Confinement",
+      "secondary_hazards": [
+        "Distance from Earth"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Behavioral Changes and Psychiatric Disorders",
+      "condition_name": "Behavioral health crisis (escalation path)",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Severe or persistent change in mood, behavior or stress; any self-harm thoughts",
+      "unit": "n/a",
+      "measured_in_space": "Crew observation; in-app screening",
+      "normal_range": "No concerning change",
+      "warning_threshold": "Any severe change, or any self-harm thought",
+      "symptoms": "Marked withdrawal, hopelessness, agitation, inability to function",
+      "recommended_action": "Stay with a crewmate and contact ground medical or psychological support immediately",
+      "contact_ground_when": "Immediately",
+      "severity": "Emergency",
+      "source_ids": [
+        "S01",
+        "S02"
+      ],
+      "evidence_level": "C",
+      "color_level": "RED",
+      "action_focus": "Emergency action now and contact the flight surgeon"
+    },
+    {
+      "id": "HCE-01",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6004 (CO2 limit)",
+      "condition_name": "High CO2 in the cabin",
+      "status_type": "Numeric",
+      "metric_to_monitor": "CO2 partial pressure (ppCO2), 1-hour average",
+      "unit": "mmHg",
+      "measured_in_space": "Cabin CO2 sensor",
+      "normal_range": "≤ 3 mmHg averaged over 1 hour",
+      "warning_threshold": "1-hour mean above 3 mmHg (an operating limit, not a poisoning dose)",
+      "symptoms": "Headache; tiredness; trouble focusing; sometimes poor sleep or nausea",
+      "recommended_action": "Check the reading and CO2 removal and air circulation; alert the crew; follow the cabin-atmosphere checklist",
+      "contact_ground_when": "If symptoms persist after the reading returns to range, or the cause cannot be found",
+      "severity": "Urgent",
+      "source_ids": [
+        "S06",
+        "S09"
+      ],
+      "evidence_level": "A",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "HCE-02",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [
+        "Distance from Earth"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Hypoxia; NASA-STD-3001 V2 6003 (PIO2 range)",
+      "condition_name": "Low oxygen (hypoxia)",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Inspired oxygen partial pressure (PIO2) with cabin pressure; SpO2",
+      "unit": "mmHg; %",
+      "measured_in_space": "Cabin atmosphere sensors; pulse oximeter",
+      "normal_range": "Within the mission-approved PIO2 range (for reference, sea-level normoxic PIO2 is about 139–168 mmHg)",
+      "warning_threshold": "Outside the approved range for that mission and exposure time",
+      "symptoms": "Dizziness; headache; shortness of breath; confusion if severe",
+      "recommended_action": "Verify O2 and pressure sensors, notify the crew, check SpO2, and use the mission oxygen/pressure procedure",
+      "contact_ground_when": "Immediately if confusion, severe breathlessness or a low SpO2 appears",
+      "severity": "Emergency",
+      "source_ids": [
+        "S02",
+        "S09"
+      ],
+      "evidence_level": "A",
+      "color_level": "RED",
+      "action_focus": "Emergency action now and contact the flight surgeon"
+    },
+    {
+      "id": "HCE-03",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6002 (inert diluent gas)",
+      "condition_name": "Too much oxygen / wrong gas mixture",
+      "status_type": "Numeric",
+      "metric_to_monitor": "O2 partial pressure and inert diluent percentage",
+      "unit": "mmHg; %",
+      "measured_in_space": "Cabin atmosphere sensors",
+      "normal_range": "At least 30% diluent gas in the nominal mixture",
+      "warning_threshold": "Diluent below 30%, or PIO2 outside the mission limit",
+      "symptoms": "May be symptom-free at first; prolonged high O2 exposure can affect the lungs",
+      "recommended_action": "Flag the abnormal mix; review atmosphere controls and fire-safety procedure; do not change the gas mixture except by approved procedure",
+      "contact_ground_when": "Any abnormal mixture reading",
+      "severity": "Urgent",
+      "source_ids": [
+        "S07",
+        "S09"
+      ],
+      "evidence_level": "A",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "HCE-04",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6006 (total pressure range)",
+      "condition_name": "Cabin pressure out of range",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Total pressure and pressure trend",
+      "unit": "kPa",
+      "measured_in_space": "Cabin pressure sensors",
+      "normal_range": "Above 34.5 and up to 103 kPa for indefinite exposure; the target setpoint may be narrower",
+      "warning_threshold": "At or below 34.5 kPa or above 103 kPa; any unexpected pressure loss",
+      "symptoms": "Ear discomfort; difficulty breathing; light-headedness",
+      "recommended_action": "Raise a pressure alert; check for leaks; follow the vehicle pressure checklist",
+      "contact_ground_when": "Immediately for any unexplained pressure loss",
+      "severity": "Emergency",
+      "source_ids": [
+        "S07",
+        "S09"
+      ],
+      "evidence_level": "A",
+      "color_level": "RED",
+      "action_focus": "Emergency action now and contact the flight surgeon"
+    },
+    {
+      "id": "HCE-05",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6007 (rate of pressure change)",
+      "condition_name": "Unexpected or rapid pressure drop",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Pressure change over time",
+      "unit": "psi/min",
+      "measured_in_space": "Cabin pressure sensors",
+      "normal_range": "Controlled changes above 1 psi: no faster than 13.5 psi/min",
+      "warning_threshold": "Faster than the approved rate, or any unplanned drop needing investigation",
+      "symptoms": "Ear or sinus pain; breathing problems; severe cases are emergencies",
+      "recommended_action": "Notify the crew immediately and open the emergency depressurization guidance",
+      "contact_ground_when": "Immediately",
+      "severity": "Emergency",
+      "source_ids": [
+        "S07",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "RED",
+      "action_focus": "Emergency action now and contact the flight surgeon"
+    },
+    {
+      "id": "HCE-06",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6012 and 6013 (temperature and humidity)",
+      "condition_name": "Cabin too hot or too cold",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Temperature with relative humidity",
+      "unit": "°C; % RH",
+      "measured_in_space": "Cabin environmental sensors",
+      "normal_range": "Inside NASA's combined envelope: operating limit 18 °C/75% RH to 27 °C/25% RH; crew performance zone 20–25 °C and 30–60% RH",
+      "warning_threshold": "Measured pair falls outside the envelope",
+      "symptoms": "Discomfort; fatigue; sweating or chills; heat stress if severe",
+      "recommended_action": "Read both values together; check the environmental control system and crew comfort",
+      "contact_ground_when": "If heat or cold stress symptoms appear, or the system cannot be corrected",
+      "severity": "Urgent",
+      "source_ids": [
+        "S08",
+        "S09"
+      ],
+      "evidence_level": "A",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "HCE-07",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6012 (temperature and humidity)",
+      "condition_name": "Humidity problems / condensation",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Relative humidity, cabin temperature, moisture reports",
+      "unit": "% RH",
+      "measured_in_space": "Cabin environmental sensors; visual inspection",
+      "normal_range": "Inside the accepted temperature–humidity envelope",
+      "warning_threshold": "Outside the envelope, or recurring condensation needing inspection",
+      "symptoms": "Dry eyes or throat; damp surfaces; possible mold growth over time",
+      "recommended_action": "Check humidity controls and wet surfaces; log a maintenance check",
+      "contact_ground_when": "If condensation or mold signs recur",
+      "severity": "Routine",
+      "source_ids": [
+        "S08",
+        "S17"
+      ],
+      "evidence_level": "A",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "HCE-08",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6107 (ventilation)",
+      "condition_name": "Poor air circulation (CO2 pockets)",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Airflow by location with local CO2",
+      "unit": "m/s; mmHg",
+      "measured_in_space": "Airflow and local CO2 sensors",
+      "normal_range": "Enough air mixing to avoid stagnant areas near the crew",
+      "warning_threshold": "Low airflow with local CO2 or heat buildup (set point depends on habitat layout)",
+      "symptoms": "Stuffiness; headache; overheating",
+      "recommended_action": "Compare nearby sensors; inspect fans and vents using the approved procedure",
+      "contact_ground_when": "If headache or stuffiness persists after airflow checks",
+      "severity": "Routine",
+      "source_ids": [
+        "S08",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "HCE-09",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6052 (particulate matter)",
+      "condition_name": "Dust floating in cabin air",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Total suspended dust and respirable dust (< 2.5 µm)",
+      "unit": "mg/m³",
+      "measured_in_space": "Particle monitor",
+      "normal_range": "Total dust < 3 mg/m³; respirable fraction < 1 mg/m³",
+      "warning_threshold": "Either limit reached or exceeded (values are for ordinary, nonreactive dust)",
+      "symptoms": "Eye and airway irritation; coughing",
+      "recommended_action": "Check filtration and the likely dust source; follow the particle-cleanup procedure",
+      "contact_ground_when": "If respiratory symptoms continue",
+      "severity": "Routine",
+      "source_ids": [
+        "S08",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "HCE-10",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6053 (lunar dust)",
+      "condition_name": "Lunar dust brought inside",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Lunar dust particles < 10 µm, time-weighted concentration",
+      "unit": "mg/m³",
+      "measured_in_space": "Particle monitor; exposure log",
+      "normal_range": "< 0.3 mg/m³ for the NASA-specified intermittent exposure scenario",
+      "warning_threshold": "0.3 mg/m³ or more in that scenario (not a general rule for Mars dust)",
+      "symptoms": "Eye or throat irritation; breathing discomfort",
+      "recommended_action": "Use habitat dust-control and post-EVA cleaning steps; record exposure",
+      "contact_ground_when": "If breathing discomfort develops after EVA",
+      "severity": "Urgent",
+      "source_ids": [
+        "S08",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "HCE-11",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6050 (atmosphere contamination limit)",
+      "condition_name": "Chemical vapors / VOC buildup",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Concentration of the identified gas and exposure duration",
+      "unit": "ppm or ppb",
+      "measured_in_space": "Trace-contaminant monitor",
+      "normal_range": "Below that substance's NASA SMAC value for the exposure period",
+      "warning_threshold": "Exceeds the SMAC for that exact chemical and duration (no universal VOC number)",
+      "symptoms": "Irritation; headache; dizziness or nausea depending on the chemical",
+      "recommended_action": "Identify the suspected contaminant; alert the crew; follow the toxic-exposure checklist",
+      "contact_ground_when": "Immediately if several crew have symptoms or a contaminant is confirmed",
+      "severity": "Urgent",
+      "source_ids": [
+        "S08",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "HCE-12",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [
+        "Distance from Earth"
+      ],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6024 (combustion monitoring)",
+      "condition_name": "Smoke or harmful gases after a fire",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Fire/smoke detector; CO and other combustion gas readings",
+      "unit": "ppm",
+      "measured_in_space": "Smoke and combustion gas detectors",
+      "normal_range": "No active smoke or fire; combustion gases inside mission limits",
+      "warning_threshold": "Any smoke or fire alarm, or a gas-specific limit exceeded",
+      "symptoms": "Coughing; eye irritation; headache; confusion if exposure is serious",
+      "recommended_action": "Start the fire / toxic-atmosphere emergency procedure and decide with the crew whether to leave the affected area",
+      "contact_ground_when": "Immediately",
+      "severity": "Emergency",
+      "source_ids": [
+        "S08",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "RED",
+      "action_focus": "Emergency action now and contact the flight surgeon"
+    },
+    {
+      "id": "HCE-13",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6026 and 6051 (potable water)",
+      "condition_name": "Unsafe drinking water",
+      "status_type": "Pass-Fail",
+      "metric_to_monitor": "Water chemistry and microbial tests; conductivity/TOC where fitted",
+      "unit": "pass / fail",
+      "measured_in_space": "Onboard water tests; lab analysis",
+      "normal_range": "Meets spacecraft water-quality requirements and microbial tests",
+      "warning_threshold": "Failed required test, harmful organism detected, or a chemical limit passed",
+      "symptoms": "Stomach upset or infection (often no immediate symptoms)",
+      "recommended_action": "Mark the source as suspect; follow sampling, isolation and water-safety steps",
+      "contact_ground_when": "On any failed test or unexplained stomach illness in the crew",
+      "severity": "Urgent",
+      "source_ids": [
+        "S08",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "HCE-14",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 6059 (microbial air contamination)",
+      "condition_name": "Microbes building up in the habitat",
+      "status_type": "Pass-Fail",
+      "metric_to_monitor": "Air and surface samples (CFU or lab identification)",
+      "unit": "CFU",
+      "measured_in_space": "Sampling kits; lab identification",
+      "normal_range": "Within mission microbial limits; no medically significant pathogens",
+      "warning_threshold": "A relevant organism found, or an approved sample limit exceeded",
+      "symptoms": "Allergy-like symptoms; rash; infection (not always visible)",
+      "recommended_action": "Request a confirmation sample; check the cleaning process; inform the medical team",
+      "contact_ground_when": "When a pathogen is found or several crew have symptoms",
+      "severity": "Urgent",
+      "source_ids": [
+        "S01",
+        "S08",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "HCE-15",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 (acoustics)",
+      "condition_name": "Noise disturbing work or sleep",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Noise spectrum compared against NC curves",
+      "unit": "NC curve",
+      "measured_in_space": "Sound level meter / acoustic monitor",
+      "normal_range": "Typical long-mission target: work ≤ NC-50; sleep ≤ NC-40",
+      "warning_threshold": "Spectrum exceeds the relevant NC curve (NC is not dBA)",
+      "symptoms": "Poor sleep; fatigue; difficulty hearing instructions",
+      "recommended_action": "Identify the noisy area or equipment; propose approved maintenance or a quieter sleep setup",
+      "contact_ground_when": "If noise keeps disturbing sleep or communication",
+      "severity": "Routine",
+      "source_ids": [
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "HCE-16",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [
+        "Isolation and Confinement"
+      ],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 8055 (lighting)",
+      "condition_name": "Not enough useful light during the day",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Melanopic EDI at eye level; DER",
+      "unit": "lux; ratio",
+      "measured_in_space": "Light sensor at eye level",
+      "normal_range": "During scheduled daytime: EDI ≥ 250 lux; DER ≥ 0.7",
+      "warning_threshold": "Daytime EDI < 250 lux or DER < 0.7",
+      "symptoms": "Sleep–wake timing can shift; less alertness",
+      "recommended_action": "Check the lighting schedule and spectrum; adjust to approved daytime lighting",
+      "contact_ground_when": "If sleep timing or alertness is affected",
+      "severity": "Routine",
+      "source_ids": [
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "HCE-17",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [
+        "Isolation and Confinement"
+      ],
+      "related_nasa_risk_or_standard": "NASA-STD-3001 V2 8055 (lighting)",
+      "condition_name": "Too much stimulating light before sleep",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Melanopic EDI and DER before bedtime",
+      "unit": "lux; ratio",
+      "measured_in_space": "Light sensor at eye level",
+      "normal_range": "Pre-sleep: EDI 8 ± 2 lux; DER ≤ 0.3",
+      "warning_threshold": "In the pre-sleep period: EDI outside 6–10 lux or DER > 0.3",
+      "symptoms": "Trouble falling asleep; poorer sleep",
+      "recommended_action": "Switch to approved dim, blue-reduced lighting in the pre-sleep period",
+      "contact_ground_when": "If sleep problems continue",
+      "severity": "Routine",
+      "source_ids": [
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    },
+    {
+      "id": "HCE-18",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Altered Immune System Responses",
+      "condition_name": "Immune changes / possible infection",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Symptoms with periodic blood, saliva or microbiology tests",
+      "unit": "n/a",
+      "measured_in_space": "Blood and saliva samples (HRP Immune Biomarkers); symptom log",
+      "normal_range": "Compared with your own medical baseline; no single continuous-sensor number",
+      "warning_threshold": "Clinically important change as set by the flight medical team (not a wearable-only diagnosis)",
+      "symptoms": "Rash; infection symptoms; possible latent-virus reactivation",
+      "recommended_action": "Log your observations and report to the medical staff",
+      "contact_ground_when": "Any rash, fever or infection signs",
+      "severity": "Urgent",
+      "source_ids": [
+        "S01",
+        "S02",
+        "S03"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "HCE-19",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [
+        "Distance from Earth"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Decompression Sickness; NASA-STD-3001 V2 6008",
+      "condition_name": "Decompression sickness (spacewalks)",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Joint pain; breathing difficulty; neurological signs after pressure change",
+      "unit": "n/a",
+      "measured_in_space": "Crew symptom report; EVA protocol compliance",
+      "normal_range": "No symptoms; prebreathe protocol completed",
+      "warning_threshold": "Pain, breathing effects, or stroke-like symptoms after a pressure change",
+      "symptoms": "Pain; in severe cases breathing effects or blocked blood vessels with stroke-like symptoms",
+      "recommended_action": "End the spacewalk safely but rapidly and return to the pressurized spacecraft; do the pure-oxygen prebreathe before spacewalks",
+      "contact_ground_when": "Immediately",
+      "severity": "Emergency",
+      "source_ids": [
+        "S02",
+        "S07",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "RED",
+      "action_focus": "Emergency action now and contact the flight surgeon"
+    },
+    {
+      "id": "HCE-20",
+      "hazard_category": "Hostile/Closed Environments",
+      "secondary_hazards": [
+        "Gravity Fields"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Injury and Compromised Performance from EVA",
+      "condition_name": "Injury and compromised performance from spacewalks",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Cognitive fatigue; injury; suit CO2 and O2 conditions",
+      "unit": "n/a",
+      "measured_in_space": "Suit biomedical monitoring; crew report",
+      "normal_range": "No pain or unusual fatigue; suit conditions normal",
+      "warning_threshold": "Pain, unusual fatigue or slowed thinking during or after EVA",
+      "symptoms": "Cognitive fatigue; injury",
+      "recommended_action": "Follow EVA prebreathe and timeline; stop and report pain, fatigue or slowed thinking; keep up exercise for bone and muscle",
+      "contact_ground_when": "Immediately for pain, confusion or abnormal suit readings",
+      "severity": "Urgent",
+      "source_ids": [
+        "S02",
+        "S17"
+      ],
+      "evidence_level": "B",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care first aid now, and report to ground the same day"
+    },
+    {
+      "id": "RAD-01",
+      "hazard_category": "Space Radiation",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Radiation-Induced Cancers",
+      "condition_name": "Cumulative radiation dose (career limit)",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Individual cumulative dose and exposure-induced death risk (REID)",
+      "unit": "mSv; % REID",
+      "measured_in_space": "Personal and area dosimeters; flight-surgeon dose tracking",
+      "normal_range": "Tracked per individual; ALARA principle (as low as reasonably achievable)",
+      "warning_threshold": "NASA policy: career cancer-death risk up to 3% REID, with 95% confidence (limit depends on age and sex). A 2021 National Academies report recommended a 600 mSv career limit (verify the current NASA value)",
+      "symptoms": "No immediate symptoms; long-term cancer risk",
+      "recommended_action": "Review your cumulative dose with the flight surgeon; follow ALARA practices and shelter guidance",
+      "contact_ground_when": "When a dosimeter alarm sounds or the plan's dose budget is approached",
+      "severity": "Preventive",
+      "source_ids": [
+        "S15",
+        "S19"
+      ],
+      "evidence_level": "A",
+      "color_level": "GREEN",
+      "action_focus": "Prevention: do the routine measures that stop the problem"
+    },
+    {
+      "id": "RAD-02",
+      "hazard_category": "Space Radiation",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Radiation-Induced Cancers",
+      "condition_name": "Neutron radiation exposure",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Neutron radiation exposure",
+      "unit": "dose rate",
+      "measured_in_space": "Active neutron spectrometer (CANS, under development); bubble detectors used previously on ISS",
+      "normal_range": "Monitored continuously; neutrons contribute about 30% of total radiation on the ISS",
+      "warning_threshold": "Readings above the mission plan (limits set by the flight surgeon)",
+      "symptoms": "No immediate symptoms; biological damage risk",
+      "recommended_action": "Move to protected areas as directed; keep exposure as low as reasonably achievable",
+      "contact_ground_when": "When readings rise above plan",
+      "severity": "Preventive",
+      "source_ids": [
+        "S04"
+      ],
+      "evidence_level": "A",
+      "color_level": "GREEN",
+      "action_focus": "Prevention: do the routine measures that stop the problem"
+    },
+    {
+      "id": "RAD-03",
+      "hazard_category": "Space Radiation",
+      "secondary_hazards": [
+        "Distance from Earth"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Radiation-Induced Cancers",
+      "condition_name": "Solar particle event (radiation storm)",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Space-weather alert; sudden dose-rate rise",
+      "unit": "dose rate",
+      "measured_in_space": "Radiation monitors; ground space-weather forecasts",
+      "normal_range": "Quiet space weather",
+      "warning_threshold": "Solar particle event alert, or a sudden dose-rate rise",
+      "symptoms": "Dose can be very high for unprotected crew (exceptional events: 1–3 Sv unprotected, per a secondary source)",
+      "recommended_action": "Move to the best-shielded area; suspend EVA; follow the storm-shelter procedure",
+      "contact_ground_when": "Immediately, and report any symptoms",
+      "severity": "Emergency",
+      "source_ids": [
+        "S20"
+      ],
+      "evidence_level": "B",
+      "color_level": "RED",
+      "action_focus": "Emergency action now and contact the flight surgeon"
+    },
+    {
+      "id": "RAD-04",
+      "hazard_category": "Space Radiation",
+      "secondary_hazards": [],
+      "related_nasa_risk_or_standard": "Risk of Radiation-Induced Cancers",
+      "condition_name": "Long-term radiation cancer risk",
+      "status_type": "Scenario",
+      "metric_to_monitor": "Cumulative dose; scheduled medical follow-up",
+      "unit": "n/a",
+      "measured_in_space": "Dose records; medical screening",
+      "normal_range": "Dose within plan",
+      "warning_threshold": "Dose approaching individual limit",
+      "symptoms": "No immediate symptoms",
+      "recommended_action": "Follow ALARA and the medical follow-up plan; research on countermeasures is ongoing",
+      "contact_ground_when": "As scheduled, or when dose approaches the limit",
+      "severity": "Preventive",
+      "source_ids": [
+        "S02",
+        "S15"
+      ],
+      "evidence_level": "B",
+      "color_level": "GREEN",
+      "action_focus": "Prevention: do the routine measures that stop the problem"
+    },
+    {
+      "id": "RAD-05",
+      "hazard_category": "Space Radiation",
+      "secondary_hazards": [
+        "Isolation and Confinement"
+      ],
+      "related_nasa_risk_or_standard": "Risk of Behavioral Changes and Psychiatric Disorders",
+      "condition_name": "Possible cognitive or nervous-system effects of radiation",
+      "status_type": "Numeric",
+      "metric_to_monitor": "Attention test; reaction time (see Baseline_Rules)",
+      "unit": "score; ms",
+      "measured_in_space": "Brief in-app tests",
+      "normal_range": "Within personal baseline",
+      "warning_threshold": "More than 10% (attention) or 20% (reaction time) deviation from baseline, repeated",
+      "symptoms": "Reduced cognitive and motor performance; behavioral change",
+      "recommended_action": "Repeat the tests; review sleep and fatigue; report a persistent decline",
+      "contact_ground_when": "If decline persists",
+      "severity": "Routine",
+      "source_ids": [
+        "S21",
+        "S17"
+      ],
+      "evidence_level": "C",
+      "color_level": "YELLOW",
+      "action_focus": "Self-care and monitoring: log it and report if it persists"
+    }
+  ],
+  "baseline_rules": [
+    {
+      "rule_id": "B01",
+      "metric": "Sleep duration",
+      "unit_or_scale": "hours/night",
+      "rule_type": "Absolute",
+      "concern_when": "Below",
+      "abs_threshold": 7,
+      "rel_threshold_pct": null,
+      "consecutive_count": 2,
+      "tbd_fields": [],
+      "rule_text": "Warning if sleep is below 7 hours for 2 consecutive nights (general adult reference 7–9 h)",
+      "kb_id": "ISO-01",
+      "source_ids": [
+        "S17",
+        "S18"
+      ],
+      "evidence_level": "C"
+    },
+    {
+      "rule_id": "B02",
+      "metric": "Sleep/wake timing variation",
+      "unit_or_scale": "hours",
+      "rule_type": "Relative to baseline",
+      "concern_when": "Deviation",
+      "abs_threshold": null,
+      "rel_threshold_pct": null,
+      "consecutive_count": 2,
+      "tbd_fields": [
+        "rel_threshold_pct"
+      ],
+      "rule_text": "Warning if timing deviates significantly from personal baseline for 2 or more days (team must define the size of deviation)",
+      "kb_id": "ISO-02",
+      "source_ids": [
+        "S17"
+      ],
+      "evidence_level": "C"
+    },
+    {
+      "rule_id": "B03",
+      "metric": "Sleep efficiency",
+      "unit_or_scale": "%",
+      "rule_type": "Absolute",
+      "concern_when": "Below",
+      "abs_threshold": 85,
+      "rel_threshold_pct": null,
+      "consecutive_count": null,
+      "tbd_fields": [
+        "consecutive_count"
+      ],
+      "rule_text": "Warning if below 85% repeatedly (team must define 'repeatedly')",
+      "kb_id": "ISO-03",
+      "source_ids": [
+        "S17",
+        "S18"
+      ],
+      "evidence_level": "C"
+    },
+    {
+      "rule_id": "B04",
+      "metric": "Stress score",
+      "unit_or_scale": "1–5",
+      "rule_type": "Absolute or relative",
+      "concern_when": "Above",
+      "abs_threshold": 4,
+      "rel_threshold_pct": null,
+      "consecutive_count": 1,
+      "tbd_fields": [],
+      "rule_text": "Warning if score is 4–5, or rises by 2 points from baseline",
+      "kb_id": "ISO-04",
+      "source_ids": [
+        "S17"
+      ],
+      "evidence_level": "C"
+    },
+    {
+      "rule_id": "B05",
+      "metric": "Mood score",
+      "unit_or_scale": "1–5",
+      "rule_type": "Absolute or relative",
+      "concern_when": "Below",
+      "abs_threshold": 2,
+      "rel_threshold_pct": null,
+      "consecutive_count": 1,
+      "tbd_fields": [],
+      "rule_text": "Warning if score is 2 or lower, or decreases persistently from baseline",
+      "kb_id": "ISO-05",
+      "source_ids": [
+        "S17"
+      ],
+      "evidence_level": "C"
+    },
+    {
+      "rule_id": "B06",
+      "metric": "Mental fatigue score",
+      "unit_or_scale": "1–5",
+      "rule_type": "Absolute",
+      "concern_when": "Above",
+      "abs_threshold": 4,
+      "rel_threshold_pct": null,
+      "consecutive_count": 2,
+      "tbd_fields": [],
+      "rule_text": "Warning if score is 4–5 on 2 consecutive assessments",
+      "kb_id": "ISO-06",
+      "source_ids": [
+        "S17"
+      ],
+      "evidence_level": "C"
+    },
+    {
+      "rule_id": "B07",
+      "metric": "Attention test",
+      "unit_or_scale": "0–100",
+      "rule_type": "Relative to baseline",
+      "concern_when": "Decrease",
+      "abs_threshold": null,
+      "rel_threshold_pct": 10,
+      "consecutive_count": 2,
+      "tbd_fields": [],
+      "rule_text": "Warning if more than 10% below baseline on repeated tests",
+      "kb_id": "ISO-07",
+      "source_ids": [
+        "S17"
+      ],
+      "evidence_level": "C"
+    },
+    {
+      "rule_id": "B08",
+      "metric": "Reaction time",
+      "unit_or_scale": "ms",
+      "rule_type": "Relative to baseline",
+      "concern_when": "Increase",
+      "abs_threshold": null,
+      "rel_threshold_pct": 20,
+      "consecutive_count": 2,
+      "tbd_fields": [],
+      "rule_text": "Warning if more than 20% above baseline on repeated tests",
+      "kb_id": "ISO-08",
+      "source_ids": [
+        "S17"
+      ],
+      "evidence_level": "C"
+    },
+    {
+      "rule_id": "B09",
+      "metric": "Memory test",
+      "unit_or_scale": "0–100",
+      "rule_type": "Relative to baseline",
+      "concern_when": "Decrease",
+      "abs_threshold": null,
+      "rel_threshold_pct": 10,
+      "consecutive_count": 2,
+      "tbd_fields": [],
+      "rule_text": "Warning if more than 10% below baseline on repeated tests",
+      "kb_id": "ISO-09",
+      "source_ids": [
+        "S17"
+      ],
+      "evidence_level": "C"
+    }
+  ],
+  "environment_limits": [
+    {
+      "limit_id": "E01",
+      "parameter": "ppCO2, 1-hour average",
+      "unit": "mmHg",
+      "lower_limit": null,
+      "upper_limit": 3,
+      "requirement": "NASA-STD-3001 V2 6004",
+      "notes": "Operating limit for the habitable volume",
+      "source_ids": [
+        "S06",
+        "S09"
+      ],
+      "verification": "Verified in source"
+    },
+    {
+      "limit_id": "E02",
+      "parameter": "Inert diluent gas",
+      "unit": "% of atmosphere",
+      "lower_limit": 30,
+      "upper_limit": null,
+      "requirement": "NASA-STD-3001 V2 6002",
+      "notes": "At least 30% diluent (balance oxygen)",
+      "source_ids": [
+        "S07"
+      ],
+      "verification": "Verified in source"
+    },
+    {
+      "limit_id": "E03",
+      "parameter": "Total cabin pressure (indefinite exposure)",
+      "unit": "kPa",
+      "lower_limit": 34.5,
+      "upper_limit": 103,
+      "requirement": "NASA-STD-3001 V2 6006",
+      "notes": "34.5 kPa = 5.0 psia (lowest achievable with 30% diluent); upper end about 15 psia",
+      "source_ids": [
+        "S07"
+      ],
+      "verification": "Partly verified (consistent with 5.0 and ~15 psia in source)"
+    },
+    {
+      "limit_id": "E04",
+      "parameter": "Pressure change rate (changes above 1 psi)",
+      "unit": "psi/min",
+      "lower_limit": null,
+      "upper_limit": 13.5,
+      "requirement": "NASA-STD-3001 V2 6007",
+      "notes": "Requirement exists in source list; value comes from team sheet",
+      "source_ids": [
+        "S07",
+        "S17"
+      ],
+      "verification": "Value not verified"
+    },
+    {
+      "limit_id": "E05",
+      "parameter": "Temperature (operating limit)",
+      "unit": "°C",
+      "lower_limit": 18,
+      "upper_limit": 27,
+      "requirement": "NASA-STD-3001 V2 6012",
+      "notes": "Paired with humidity: 75% RH at 18 °C to 25% RH at 27 °C",
+      "source_ids": [
+        "S08"
+      ],
+      "verification": "Verified in source"
+    },
+    {
+      "limit_id": "E06",
+      "parameter": "Relative humidity (operating limit)",
+      "unit": "% RH",
+      "lower_limit": 25,
+      "upper_limit": 75,
+      "requirement": "NASA-STD-3001 V2 6012",
+      "notes": "Depends on temperature (see E05)",
+      "source_ids": [
+        "S08"
+      ],
+      "verification": "Verified in source"
+    },
+    {
+      "limit_id": "E07",
+      "parameter": "Temperature (crew performance zone)",
+      "unit": "°C",
+      "lower_limit": 20,
+      "upper_limit": 25,
+      "requirement": "NASA-STD-3001 V2 6013",
+      "notes": "Operating zone for crew performance",
+      "source_ids": [
+        "S08"
+      ],
+      "verification": "Verified in source"
+    },
+    {
+      "limit_id": "E08",
+      "parameter": "Relative humidity (crew performance zone)",
+      "unit": "% RH",
+      "lower_limit": 30,
+      "upper_limit": 60,
+      "requirement": "NASA-STD-3001 V2 6013",
+      "notes": "Operating zone for crew performance",
+      "source_ids": [
+        "S08"
+      ],
+      "verification": "Verified in source"
+    },
+    {
+      "limit_id": "E09",
+      "parameter": "Total suspended dust",
+      "unit": "mg/m³",
+      "lower_limit": null,
+      "upper_limit": 3,
+      "requirement": "NASA-STD-3001 V2 6052",
+      "notes": "Ordinary, nonreactive dust",
+      "source_ids": [
+        "S08",
+        "S17"
+      ],
+      "verification": "Value not verified"
+    },
+    {
+      "limit_id": "E10",
+      "parameter": "Respirable dust (< 2.5 µm)",
+      "unit": "mg/m³",
+      "lower_limit": null,
+      "upper_limit": 1,
+      "requirement": "NASA-STD-3001 V2 6052",
+      "notes": "Ordinary, nonreactive dust",
+      "source_ids": [
+        "S08",
+        "S17"
+      ],
+      "verification": "Value not verified"
+    },
+    {
+      "limit_id": "E11",
+      "parameter": "Lunar dust (< 10 µm), time-weighted",
+      "unit": "mg/m³",
+      "lower_limit": null,
+      "upper_limit": 0.3,
+      "requirement": "NASA-STD-3001 V2 6053",
+      "notes": "Specified intermittent exposure scenario; not a Mars dust rule",
+      "source_ids": [
+        "S08",
+        "S17"
+      ],
+      "verification": "Value not verified"
+    },
+    {
+      "limit_id": "E12",
+      "parameter": "Noise, work areas",
+      "unit": "NC curve",
+      "lower_limit": null,
+      "upper_limit": 50,
+      "requirement": "NASA-STD-3001 V2 (acoustics)",
+      "notes": "NC is not dBA; typical long-mission target",
+      "source_ids": [
+        "S17"
+      ],
+      "verification": "Value not verified"
+    },
+    {
+      "limit_id": "E13",
+      "parameter": "Noise, sleep areas",
+      "unit": "NC curve",
+      "lower_limit": null,
+      "upper_limit": 40,
+      "requirement": "NASA-STD-3001 V2 (acoustics)",
+      "notes": "NC is not dBA; typical long-mission target",
+      "source_ids": [
+        "S17"
+      ],
+      "verification": "Value not verified"
+    },
+    {
+      "limit_id": "E14",
+      "parameter": "Daytime melanopic EDI",
+      "unit": "lux",
+      "lower_limit": 250,
+      "upper_limit": null,
+      "requirement": "NASA-STD-3001 V2 8055",
+      "notes": "At eye level during scheduled daytime",
+      "source_ids": [
+        "S17"
+      ],
+      "verification": "Value not verified"
+    },
+    {
+      "limit_id": "E15",
+      "parameter": "Daytime DER",
+      "unit": "ratio",
+      "lower_limit": 0.7,
+      "upper_limit": null,
+      "requirement": "NASA-STD-3001 V2 8055",
+      "notes": "At eye level during scheduled daytime",
+      "source_ids": [
+        "S17"
+      ],
+      "verification": "Value not verified"
+    },
+    {
+      "limit_id": "E16",
+      "parameter": "Pre-sleep melanopic EDI",
+      "unit": "lux",
+      "lower_limit": 6,
+      "upper_limit": 10,
+      "requirement": "NASA-STD-3001 V2 8055",
+      "notes": "Target 8 ± 2 lux",
+      "source_ids": [
+        "S17"
+      ],
+      "verification": "Value not verified"
+    },
+    {
+      "limit_id": "E17",
+      "parameter": "Pre-sleep DER",
+      "unit": "ratio",
+      "lower_limit": null,
+      "upper_limit": 0.3,
+      "requirement": "NASA-STD-3001 V2 8055",
+      "notes": "Before bedtime",
+      "source_ids": [
+        "S17"
+      ],
+      "verification": "Value not verified"
+    },
+    {
+      "limit_id": "E18",
+      "parameter": "Reference: normoxic PIO2 at sea level",
+      "unit": "mmHg",
+      "lower_limit": 139,
+      "upper_limit": 168,
+      "requirement": "NASA-STD-3001 V2 6003 (rationale)",
+      "notes": "OSHA 19.5–23.5% O2 at sea level; the mission-approved range is in Table 6.2-1",
+      "source_ids": [
+        "S09"
+      ],
+      "verification": "Verified in source"
+    },
+    {
+      "limit_id": "E19",
+      "parameter": "Reference: practical hyperoxic PIO2 limit",
+      "unit": "mmHg",
+      "lower_limit": null,
+      "upper_limit": 333,
+      "requirement": "NASA-STD-3001 V2 6003 (rationale)",
+      "notes": "Described as a practical and defensible limit, not a mission requirement",
+      "source_ids": [
+        "S09"
+      ],
+      "verification": "Verified in source"
+    }
+  ],
+  "etco2_review": [
+    {
+      "question": "Is 35-45 mmHg a reference?",
+      "finding": "Yes, normal adult ETCO2 is commonly 35-45 mmHg",
+      "meaning_for_astra": "A useful reference range, not a mission emergency zone",
+      "evidence_class": "Clinical overview",
+      "link": "https://www.ncbi.nlm.nih.gov/books/NBK539754/"
+    },
+    {
+      "question": "Can we use <30 mmHg as astronaut RED?",
+      "finding": "No. <30 appears in a 2025 PEDIATRIC procedural sedation study as a respiratory-event definition",
+      "meaning_for_astra": "Do not adopt it as universal flight red. Correct to leave Critical_Low blank.",
+      "evidence_class": "Study-specific outcome",
+      "link": "https://www.mdpi.com/2227-9067/12/7/938"
+    },
+    {
+      "question": "Can we use >50 mmHg as astronaut RED?",
+      "finding": "No. Miner et al 2002: 74 adults undergoing procedural sedation in an emergency department",
+      "meaning_for_astra": "50 was a STUDY respiratory-depression criterion, not a general NASA limit",
+      "evidence_class": "Study-specific outcome",
+      "link": "https://pubmed.ncbi.nlm.nih.gov/11927449/"
+    },
+    {
+      "question": "Was the 2002 full paper reviewed?",
+      "finding": "Abstract reviewed; independent ACEP clinical policy also summarizes this study",
+      "meaning_for_astra": "Do not claim direct full-text review of the original 2002 paper",
+      "evidence_class": "Abstract + secondary policy",
+      "link": "https://www.acep.org/siteassets/uploads/uploaded-files/acep/clinical-and-practice-management/clinical-policies/clinical-policy-procedural-sedation-and-analgesia-in-the-emergency-department.pdf"
+    },
+    {
+      "question": "What else did the 2002 study use?",
+      "finding": "Absent capnogram waveform and >10 mmHg change from baseline appeared in post-hoc detection",
+      "meaning_for_astra": "Waveform presence and change often more informative than one number",
+      "evidence_class": "Study-specific",
+      "link": "https://pubmed.ncbi.nlm.nih.gov/11927449/"
+    },
+    {
+      "question": "What can low EtCO2 mean?",
+      "finding": "Ventilation, pulmonary perfusion, metabolism or measurement/sampling issue",
+      "meaning_for_astra": "Check signal quality; never label low EtCO2 automatically as disease",
+      "evidence_class": "Clinical overview",
+      "link": "https://www.ncbi.nlm.nih.gov/books/NBK482169/"
+    },
+    {
+      "question": "Is cabin CO2 the same as EtCO2?",
+      "finding": "No. Cabin ppCO2 measures environmental exposure; ETCO2 measures exhaled gas concentration at end expiration",
+      "meaning_for_astra": "Keep environmental sensor and physiological capnograph as separate measurements",
+      "evidence_class": "Physiology / NASA environment standard",
+      "link": "https://www.nasa.gov/reference/6-0-natural-and-induced-environments-vol-2/"
+    },
+    {
+      "question": "Does NASA publish a general EtCO2 RED for all astronauts here?",
+      "finding": "No universal astronaut alarm threshold was established by the NASA resources consulted",
+      "meaning_for_astra": "Keep source confidence C, mark as requiring crew-medical signoff",
+      "evidence_class": "Source scope check",
+      "link": "https://www.nasa.gov/reference/3-0-health-and-medical-care/"
+    },
+    {
+      "question": "Safer prototype behavior",
+      "finding": "Validate waveform -> check trend -> assess symptoms/RR/SpO2 -> request crew-medical assessment",
+      "meaning_for_astra": "Show Investigation Needed, not automated diagnosis or treatment from ETCO2 alone",
+      "evidence_class": "Design recommendation",
+      "link": "https://cpr.heart.org/en/resuscitation-science/2024-first-aid-guidelines"
+    }
+  ],
+  "sources": [
+    {
+      "source_id": "S01",
+      "title": "5 Hazards of Human Spaceflight",
+      "publisher": "NASA HRP",
+      "url": "https://www.nasa.gov/hrp/hazards/",
+      "url_note": null,
+      "type": "NASA web page",
+      "used_for": "Hazard definitions; hazard-to-risk framing",
+      "reliability_note": "Official; page updated Jun 12, 2026"
+    },
+    {
+      "source_id": "S02",
+      "title": "Risks of Human Spaceflight",
+      "publisher": "NASA HRP",
+      "url": "https://www.nasa.gov/hrp/risks/",
+      "url_note": null,
+      "type": "NASA web page",
+      "used_for": "List and descriptions of HRP risks",
+      "reliability_note": "Official; page updated Jul 21, 2026. Does not map each risk to a hazard"
+    },
+    {
+      "source_id": "S03",
+      "title": "Ongoing HRP Research in Space",
+      "publisher": "NASA HRP",
+      "url": "https://www.nasa.gov/hrp/ongoing-hrp-research/",
+      "url_note": null,
+      "type": "NASA web page",
+      "used_for": "Tempus Pro, ARCHeR, Standard Measures, Venous Haemostasis, Immune Biomarkers, etc.",
+      "reliability_note": "Official; page updated Aug 18, 2026"
+    },
+    {
+      "source_id": "S04",
+      "title": "Monitoring radiation for astronaut health",
+      "publisher": "Canadian Space Agency",
+      "url": "https://www.asc-csa.gc.ca/eng/news/articles/2026/2026-02-26-monitoring-radiation-astronaut-health.asp",
+      "url_note": null,
+      "type": "Agency article",
+      "used_for": "Neutron radiation (about 30% of ISS radiation); CANS instrument",
+      "reliability_note": "Official; dated 2026-02-26"
+    },
+    {
+      "source_id": "S05",
+      "title": "Why do we conduct experiments in space?",
+      "publisher": "Canadian Space Agency",
+      "url": "https://www.asc-csa.gc.ca/eng/iss/science/why-do-we-conduct-science-experiments-in-space.asp",
+      "url_note": null,
+      "type": "Agency article",
+      "used_for": "Provided in the competition resources",
+      "reliability_note": "NOT YET REVIEWED in this build. No row relies on it"
+    },
+    {
+      "source_id": "S06",
+      "title": "NASA-STD-3001 Technical Brief OCHMO-TB-004: Carbon Dioxide",
+      "publisher": "NASA OCHMO",
+      "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-004-carbon-dioxide.pdf",
+      "url_note": null,
+      "type": "Technical brief",
+      "used_for": "ppCO2 limit [V2 6004]",
+      "reliability_note": "Official; derived from NASA-STD-3001"
+    },
+    {
+      "source_id": "S07",
+      "title": "NASA-STD-3001 Technical Brief OCHMO-TB-003: Habitable Atmosphere",
+      "publisher": "NASA OCHMO",
+      "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-003-habitable-atmosphere.pdf",
+      "url_note": null,
+      "type": "Technical brief",
+      "used_for": "Diluent gas [V2 6002], pressure range [V2 6006], pressure rate [V2 6007], DCS risk [V2 6008]",
+      "reliability_note": "Official; derived from NASA-STD-3001"
+    },
+    {
+      "source_id": "S08",
+      "title": "NASA-STD-3001 Technical Brief OCHMO-TB-002: ECLSS",
+      "publisher": "NASA OCHMO",
+      "url": "https://www.nasa.gov/wp-content/uploads/2023/12/ochmo-tb-002-eclss.pdf",
+      "url_note": null,
+      "type": "Technical brief",
+      "used_for": "Temperature/humidity limits [V2 6012, 6013]; water, dust, microbial requirement IDs",
+      "reliability_note": "Official; derived from NASA-STD-3001"
+    },
+    {
+      "source_id": "S09",
+      "title": "NASA-STD-3001 Vol. 2, Section 6: Natural and Induced Environments",
+      "publisher": "NASA",
+      "url": "https://www.nasa.gov/reference/6-0-natural-and-induced-environments-vol-2",
+      "url_note": null,
+      "type": "Technical standard (web)",
+      "used_for": "PIO2 ranges [V2 6003], CO2 [V2 6004], rationale text",
+      "reliability_note": "Official standard"
+    },
+    {
+      "source_id": "S10",
+      "title": "Tempus Pro exploration-atmosphere usability study (EA-2)",
+      "publisher": "NASA NTRS",
+      "url": "https://ntrs.nasa.gov/citations/20240001625",
+      "url_note": null,
+      "type": "Technical report",
+      "used_for": "Novices could use Tempus Pro with iAssist guidance; calibration checks; 8.2 psi / 34% O2 chamber",
+      "reliability_note": "Official; small exploratory sample"
+    },
+    {
+      "source_id": "S11",
+      "title": "Tempus ALS / Tempus Pro ISS demonstration",
+      "publisher": "NASA NTRS",
+      "url": "https://ntrs.nasa.gov/citations/20230001365",
+      "url_note": null,
+      "type": "Technical report",
+      "used_for": "Vitals measured: BP, ECG, HR, EtCO2, RR, SpO2, temperature",
+      "reliability_note": "Official"
+    },
+    {
+      "source_id": "S12",
+      "title": "Safe Human Expeditions Beyond LEO (risk posture by hazard)",
+      "publisher": "NASA NTRS (Valinia et al.)",
+      "url": "https://ntrs.nasa.gov/api/citations/20220009899/downloads/F5.2_04_Valinia.pdf",
+      "url_note": null,
+      "type": "Presentation",
+      "used_for": "Risks grouped under Distance from Earth; evacuation timeframes",
+      "reliability_note": "Official; data as of Nov 2021; slide text is fragmentary"
+    },
+    {
+      "source_id": "S13",
+      "title": "Buckland et al. (NASA Ames Human Factors)",
+      "publisher": "NASA Ames",
+      "url": "https://humanfactors.arc.nasa.gov/publications/Buckland_Daniel_730_2.pdf",
+      "url_note": null,
+      "type": "Paper",
+      "used_for": "Distance from Earth: lunar >30 days and Mars missions; medication risk",
+      "reliability_note": "Official"
+    },
+    {
+      "source_id": "S14",
+      "title": "Risk Trade Space Analysis, Acta Astronautica",
+      "publisher": "NASA Ames",
+      "url": "https://humanfactors.arc.nasa.gov/publications/Acta_Astronautica_Risk_Trade_Space_Analysis.pdf",
+      "url_note": null,
+      "type": "Paper",
+      "used_for": "Reduced ground support / Earth independence",
+      "reliability_note": "Peer-reviewed"
+    },
+    {
+      "source_id": "S15",
+      "title": "Space radiation cancer risk for ISS astronauts (PMC3997516)",
+      "publisher": "PLoS ONE / PMC",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC3997516",
+      "url_note": null,
+      "type": "Peer-reviewed paper",
+      "used_for": "NASA limit: 3% REID, 95% confidence; ALARA",
+      "reliability_note": "Peer-reviewed"
+    },
+    {
+      "source_id": "S16",
+      "title": "Risk interface analysis (renal stone: primary hazard microgravity)",
+      "publisher": "NASA NTRS",
+      "url": "https://ntrs.nasa.gov/api/citations/20160011164/downloads/20160011164.pdf",
+      "url_note": null,
+      "type": "Presentation",
+      "used_for": "Kidney stone: primary hazard microgravity; secondary closed environment and distance",
+      "reliability_note": "Official"
+    },
+    {
+      "source_id": "S17",
+      "title": "Team sheets (ASTRA): earlier compiled rows",
+      "publisher": "ASTRA team",
+      "url": null,
+      "url_note": "(add the exact NASA page / episode link per row)",
+      "type": "Team-compiled",
+      "used_for": "Rows and numbers from the original team spreadsheets",
+      "reliability_note": "ORIGINAL SOURCE NOT RECORDED. Numbers must be traced and verified before final submission"
+    },
+    {
+      "source_id": "S18",
+      "title": "Terrestrial adult reference values (BP, HR, SpO2, temperature, RR, glucose)",
+      "publisher": "General clinical references (e.g., AHA/ACC BP guideline, ADA glucose standards)",
+      "url": null,
+      "url_note": "(team to add exact reference URLs)",
+      "type": "Medical reference",
+      "used_for": "Vital_Thresholds sheet",
+      "reliability_note": "Earth-based adult values; NOT NASA flight limits. Needs clinical review"
+    },
+    {
+      "source_id": "S19",
+      "title": "New Space Radiation Limits Needed for NASA Astronauts, Report Says",
+      "publisher": "Scientific American",
+      "url": "https://www.scientificamerican.com/article/new-space-radiation-limits-needed-for-nasa-astronauts-report-says/",
+      "url_note": null,
+      "type": "News article",
+      "used_for": "National Academies recommendation of a 600 mSv career limit",
+      "reliability_note": "Secondary source reporting a National Academies report"
+    },
+    {
+      "source_id": "S20",
+      "title": "To Mars and back: health impacts from radiation in space",
+      "publisher": "Australian Science Media",
+      "url": "https://australiascience.tv/to-mars-and-back-health-impacts-from-radiation-in-space",
+      "url_note": null,
+      "type": "Article",
+      "used_for": "Solar particle event doses for unprotected crew",
+      "reliability_note": "Secondary source; verify against NASA"
+    },
+    {
+      "source_id": "S21",
+      "title": "NASA decodes hazards of human spaceflight to Mars",
+      "publisher": "Eastern Mirror (quoting NASA statement)",
+      "url": "https://www.easternmirrornagaland.com/nasa-decodes-hazards-of-human-spaceflight-to-mars",
+      "url_note": null,
+      "type": "News article",
+      "used_for": "Radiation effects on CNS and cognition",
+      "reliability_note": "Secondary source; verify against NASA"
+    },
+    {
+      "source_id": "S22",
+      "title": "End-tidal carbon dioxide monitoring during procedural sedation",
+      "publisher": "PubMed (PMID 11927449)",
+      "url": "https://pubmed.ncbi.nlm.nih.gov/11927449/",
+      "url_note": null,
+      "type": "Peer-reviewed paper (abstract read)",
+      "used_for": "EtCO2 above 50 mmHg used as the RED (respiratory depression) cutoff for V08",
+      "reliability_note": "Peer-reviewed, but adults in emergency-department sedation, NOT astronauts or NASA flight limits. Only the abstract was read. Needs clinical review"
+    },
+    {
+      "source_id": "S23",
+      "title": "2025 AHA Adult Bradycardia With a Pulse Algorithm",
+      "publisher": "American Heart Association",
+      "url": "https://www.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Algorithms/Algorithm-ACLS-Bradycardia-250514.pdf",
+      "url_note": null,
+      "type": "Clinical algorithm",
+      "used_for": "Heart rate <50 often used when assessing bradyarrhythmia and cardiopulmonary compromise",
+      "reliability_note": "Not a universal low-red threshold for astronauts; symptoms/perfusion determine urgency"
+    },
+    {
+      "source_id": "S24",
+      "title": "2025 AHA Adult Tachyarrhythmia With a Pulse Algorithm",
+      "publisher": "American Heart Association",
+      "url": "https://cpr.heart.org/-/media/CPR-Files/CPR-Guidelines-Files/2025-Accessible/Algorithm-ACLS-Tachyarrhythmia-LngDscrp-250726-Ed.pdf",
+      "url_note": null,
+      "type": "Clinical algorithm",
+      "used_for": "Tachyarrhythmia typically >=150 bpm; unstable features matter",
+      "reliability_note": "Does not validate automatic RED at 120 bpm"
+    },
+    {
+      "source_id": "S25",
+      "title": "2025 AHA/ACC High Blood Pressure in Adults Guideline",
+      "publisher": "AHA/ACC",
+      "url": "https://professional.heart.org/en/science-news/2025-high-blood-pressure-guideline/top-things-to-know",
+      "url_note": null,
+      "type": "Clinical guideline",
+      "used_for": "Categories of BP for adults; 2025 update",
+      "reliability_note": "Hypertensive emergency requires severe BP AND acute target-organ damage; office categories are not flight alerts"
+    },
+    {
+      "source_id": "S26",
+      "title": "BTS Guideline for Oxygen Use in Adults in Healthcare and Emergency Settings",
+      "publisher": "British Thoracic Society",
+      "url": "https://www.brit-thoracic.org.uk/document-library/guidelines/emergency-oxygen/bts-guideline-for-oxygen-use-in-adults-in-healthcare-and-emergency-settings/",
+      "url_note": null,
+      "type": "Clinical guideline",
+      "used_for": "Oxygen target saturation 94-98% for most acutely ill adults; 88-92% for some at hypercapnia risk",
+      "reliability_note": "Targets are clinical-context dependent; not universal astronaut SpO2 alarm thresholds"
+    },
+    {
+      "source_id": "S27",
+      "title": "Pulse Oximeters: performance limitations",
+      "publisher": "US FDA",
+      "url": "https://www.fda.gov/medical-devices/products-and-medical-procedures/pulse-oximeters",
+      "url_note": null,
+      "type": "Regulatory guidance",
+      "used_for": "SpO2 measurement accuracy and limitations",
+      "reliability_note": "Confirm sensor/signal; symptoms and trends matter"
+    },
+    {
+      "source_id": "S28",
+      "title": "National Early Warning Score NEWS2",
+      "publisher": "Royal College of Physicians",
+      "url": "https://rcp.ac.uk/resources/national-early-warning-score-news-2/",
+      "url_note": null,
+      "type": "Hospital scoring system",
+      "used_for": "Adult RR, HR, SBP, SpO2 and temperature assessed as combined early warning score",
+      "reliability_note": "Hospital scoring system; NOT a NASA medical alert algorithm"
+    },
+    {
+      "source_id": "S29",
+      "title": "Standards of Care in Diabetes 2026: Hypoglycemia",
+      "publisher": "American Diabetes Association",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12690178/",
+      "url_note": null,
+      "type": "Clinical guideline",
+      "used_for": "<70 mg/dL level 1; <54 mg/dL level 2; severe level 3 defined clinically",
+      "reliability_note": "Applies to clinical glycemia; does not establish emergency fasting hyperglycemia at 126"
+    },
+    {
+      "source_id": "S30",
+      "title": "Standards of Care in Diabetes 2026: Diagnosis and Classification",
+      "publisher": "American Diabetes Association",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC12690183/",
+      "url_note": null,
+      "type": "Clinical guideline",
+      "used_for": "Fasting plasma glucose >=126 mg/dL is a diagnostic criterion",
+      "reliability_note": "Diagnosis ordinarily needs confirmation; this is NOT a stand-alone RED emergency threshold"
+    },
+    {
+      "source_id": "S31",
+      "title": "Capnography (review)",
+      "publisher": "NCBI Bookshelf / StatPearls",
+      "url": "https://www.ncbi.nlm.nih.gov/books/NBK539754/",
+      "url_note": null,
+      "type": "Clinical overview",
+      "used_for": "ETCO2 reference 35-45 mmHg",
+      "reliability_note": "Normal range only; does not supply astronaut low-side RED limit"
+    },
+    {
+      "source_id": "S32",
+      "title": "2024 AHA / American Red Cross Guidelines for First Aid",
+      "publisher": "American Heart Association / American Red Cross",
+      "url": "https://cpr.heart.org/en/resuscitation-science/2024-first-aid-guidelines",
+      "url_note": null,
+      "type": "First aid guideline",
+      "used_for": "Need clinical context, early response to emergencies; oral glucose only if awake and can swallow",
+      "reliability_note": "Terrestrial first aid, NOT an onboard astronaut mission medical protocol"
+    },
+    {
+      "source_id": "S33",
+      "title": "NASA-STD-3001 Volume 1 Crew Health",
+      "publisher": "NASA OCHMO",
+      "url": "https://www.nasa.gov/reference/3-0-health-and-medical-care/",
+      "url_note": null,
+      "type": "NASA technical standard",
+      "used_for": "Flight Medicine team oversees in-mission medical care, considering mission constraints",
+      "reliability_note": "Supports need for flight-surgeon review, not generic terrestrial alarms"
+    },
+    {
+      "source_id": "S34",
+      "title": "Tempus Pro flight research description",
+      "publisher": "NASA HRP",
+      "url": "https://www.nasa.gov/reference/tempus-pro/",
+      "url_note": null,
+      "type": "NASA research project",
+      "used_for": "Demonstration/evaluation of integrated vital signs and telemedicine",
+      "reliability_note": "Does NOT publish universal NASA RED/low/high vital sign thresholds"
+    },
+    {
+      "source_id": "S35",
+      "title": "Capnography lower ETCO2 under pediatric procedural sedation",
+      "publisher": "Children (2025 peer-reviewed study)",
+      "url": "https://www.mdpi.com/2227-9067/12/7/938",
+      "url_note": null,
+      "type": "Clinical study",
+      "used_for": "EtCO2 <30 mmHg used in a definition of respiratory event during pediatric sedation",
+      "reliability_note": "Study endpoint, NOT clinical guideline or NASA low-side RED threshold"
+    },
+    {
+      "source_id": "S36",
+      "title": "ACEP Clinical Policy: Procedural Sedation and Analgesia",
+      "publisher": "American College of Emergency Physicians",
+      "url": "https://www.acep.org/siteassets/uploads/uploaded-files/acep/clinical-and-practice-management/clinical-policies/clinical-policy-procedural-sedation-and-analgesia-in-the-emergency-department.pdf",
+      "url_note": null,
+      "type": "Clinical policy review",
+      "used_for": "Summarizes Miner 2002 and other sedation studies including ETCO2 >50 criterion",
+      "reliability_note": "Confirms study-specific use; not a general ambulatory or astronaut alert cutoff"
+    }
+  ]
+}
