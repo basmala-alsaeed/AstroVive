@@ -1,0 +1,7 @@
+{
+  "_help": "Hide pages or page elements without changing code. Add names to the lists below, save, and refresh the browser (no restart needed).",
+  "_pages_you_can_hide": ["details", "diagnose", "reports", "wellbeing", "hazards", "ground", "profile"],
+  "_elements_you_can_hide": ["demo_data", "smart_alerts", "health_analysis", "join_mission", "forgot_code", "speed_sim", "link_toggle", "pain_log", "diag_history"],
+  "hidden_pages": [],
+  "hidden_elements": []
+}
